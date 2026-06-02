@@ -105,6 +105,7 @@ const FormProduct = () => {
         <hr />
         {/* Upload file */}
         <Uploadfile form = {form} setForm= {setForm}/>
+        
         <button className="hover:text-orange-400 font-bold m-2">เพิ่มสินค้า</button>
 
         <hr />

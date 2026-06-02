@@ -8,7 +8,6 @@ const Uploadfile = ({ form, setForm }) => {
   // js
   const token = useEcomStore((state) => state.token);
   const [isLoading, setIsLoading] = useState(false);
-
   const handleOnChange = (e) => {
     const files = e.target.files;
     if (files) {
@@ -54,28 +53,41 @@ const Uploadfile = ({ form, setForm }) => {
     }
   };
   console.log(form);
-  const handleDelete = (public_id) =>{
+
+  const handleDelete = (public_id)=>{
     console.log(public_id)
   }
+
   return (
     <div className="my-4">
+
       <div className="flex mx-4 gap-4 my-4">
-        {/* image */}
+            {/* Image */}
 
-        {form.images.map((item, index) => (
-          <div className="relative">
-              <img className="w-24 h-24 hover:scale-105" 
-                   src={item.url} />
-              <span 
-                 onClick={()=>handleDelete(item.public_id)}
-                 className="absolute top-0 right-0 text-red-800 font-bold">X</span>
-          </div>
-        ))}
+            {
+              form.images.map((item,index)=>
+                   <div className="relative"
+                        key={index}>
+                        <img 
+                        className="w-24 h-24 hover:scale-105"
+                        src={item.url}/>
+                        <span 
+                        onClick={()=>handleDelete(item.public_id)}
+                        className="absolute right-0 top-0 text-red-600 font-bold">X</span>
+                   </div>
+              )
+            }
+
       </div>
-
+      
       <div>
-        <input onChange={handleOnChange} type="file" name="images" multiple />
-      </div>
+        <input 
+            onChange={handleOnChange} 
+            type="file" 
+            name="images" 
+            multiple />
+       </div>
+
     </div>
   );
 };
