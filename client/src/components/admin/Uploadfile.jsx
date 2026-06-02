@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import { uploadFiles } from "../../api/uploadfile";
 import Resizer from "react-image-file-resizer";
 import useEcomStore from "../../store/econ-store";
+import { removeFiles } from "../../api/removefile";
 
 const Uploadfile = ({ form, setForm }) => {
   // js
@@ -55,7 +56,23 @@ const Uploadfile = ({ form, setForm }) => {
   console.log(form);
 
   const handleDelete = (public_id)=>{
-    console.log(public_id)
+    const images = form.images
+    removeFiles(token,public_id)
+    .then((res)=>{
+      const filterImages = images.filter((item)=>{
+        console.log(item)
+        return item.public_id !== public_id
+      })
+      console.log('filter images',filterImages)
+      setForm({
+        ...form,
+        images : filterImages
+      })
+      toast.error(res.data)
+    })
+    .cath((err)=>{
+      console.log(err)
+    })
   }
 
   return (

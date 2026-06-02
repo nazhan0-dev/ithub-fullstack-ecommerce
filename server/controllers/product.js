@@ -13,7 +13,7 @@ exports.create = async(req,res) =>{
                 categoryId : parseInt(categoryId),
                 images : {
                     create : images.map((item)=> ({
-                        asset_id   : item.aseset_id || "",
+                        asset_id   : item.asset_id || "",
                         public_id  : item.public_id,
                         url        : item.url,
                         secure_url : item.secure_url
@@ -91,7 +91,7 @@ exports.update = async(req,res) =>{
                 categoryId : parseInt(categoryId),
                 images : {
                     create : images.map((item)=> ({
-                        asset_id   : item.aseset_id,
+                        asset_id   : item.asset_id,
                         public_id  : item.public_id,
                         url        : item.url,
                         secure_url : item.secure_url
@@ -245,7 +245,13 @@ exports.createImages = async(req,res) =>{
 }
 exports.removeImage = async(req,res) =>{
      try {
-        res.send('Hello Remove Imge')
+        const {public_id} = req.body
+        // console.log(public_id)
+        cloudinary.uploader.destroy(public_id,(result)=>{
+            res.send( "Remove Image Success !!")
+
+        })
+         
      } catch (error) {
         console.log(error)
         res.status(500).json({message : 'Server Error'})
