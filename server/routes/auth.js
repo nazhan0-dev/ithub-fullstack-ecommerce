@@ -1,17 +1,17 @@
 const express = require('express')
-const rounter = express.Router()
+const router = express.Router()
 // import controller
 const {register , login  , currentUser} = require('../controllers/auth')
 // import middleware
-const {authCheck ,adminCheck } = require('../middllewares/authCheck')
+const {authCheck ,adminCheck } = require('../middlewares/authCheck')
 //@ENDPOINT http://localhost:8000/api/auth
-rounter.post('/register',register)
-rounter.post('/login',login)
-rounter.post('/current-user',authCheck,currentUser)
-rounter.post('/current-admin',authCheck,adminCheck,currentUser)
+router.post('/register',register)
+router.post('/login',login)
+router.post('/current-user',authCheck,currentUser)
+router.post('/current-admin',authCheck,adminCheck,currentUser)
 
 
 
 
 
-module.exports = rounter
+module.exports = router

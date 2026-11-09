@@ -1,12 +1,82 @@
-import React from 'react'
-import FormEditProduct from '../../components/admin/FormEditProduct'
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import useEcomStore from "../../store/ecom-store";
+import { readProduct, updateProduct } from "../../api/product";
+import ProductForm from "../../components/admin/ProductForm";
+import { emptyProduct } from "../../utils/product";
+import { PageHeader, Panel } from "../../components/admin/AdminUI";
 
 const EditProduct = () => {
-  return (
-    <div>
-        <FormEditProduct/>
-    </div>
-  )
-}
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const token = useEcomStore((state) => state.token);
 
-export default EditProduct
+  const [form, setForm] = useState(emptyProduct);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    readProduct(token, id)
+      .then((res) =>
+        setForm({
+          ...emptyProduct,
+          ...res.data,
+          categoryId: res.data.categoryId ?? "",
+          images: res.data.images || [],
+        }),
+      )
+      .catch((err) => {
+        console.log(err);
+        toast.error("ไม่พบสินค้า");
+      })
+      .finally(() => setLoading(false));
+  }, [token, id]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await updateProduct(token, id, form);
+      toast.success(`แก้ไข ${res.data.title} เรียบร้อย`);
+      navigate("/admin/product");
+    } catch (error) {
+      console.log(error);
+      toast.error("แก้ไขสินค้าไม่สำเร็จ");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="max-w-3xl">
+      <Link
+        to="/admin/product"
+        className="mb-3 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary"
+      >
+        <ArrowLeft size={16} /> กลับไปหน้าสินค้า
+      </Link>
+      <PageHeader title="แก้ไขสินค้า" description={form.title} />
+
+      <Panel className="p-6">
+        {loading ? (
+          <div className="flex justify-center py-16 text-muted-foreground">
+            <Loader2 className="animate-spin" />
+          </div>
+        ) : (
+          <ProductForm
+            form={form}
+            setForm={setForm}
+            onSubmit={handleSubmit}
+            submitting={submitting}
+            submitLabel="บันทึกการแก้ไข"
+            onCancel={() => navigate("/admin/product")}
+          />
+        )}
+      </Panel>
+    </div>
+  );
+};
+
+export default EditProduct;

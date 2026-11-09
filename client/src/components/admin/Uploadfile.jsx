@@ -1,110 +1,96 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { toast } from "react-toastify";
-import { uploadFiles } from "../../api/uploadfile";
 import Resizer from "react-image-file-resizer";
-import useEcomStore from "../../store/econ-store";
+import { ImagePlus, Loader2, X } from "lucide-react";
+import { uploadFiles } from "../../api/uploadfile";
 import { removeFiles } from "../../api/removefile";
+import useEcomStore from "../../store/ecom-store";
+
+// react-image-file-resizer เป็น CJS -> บางครั้งอยู่ใน .default
+const resizer = Resizer.default || Resizer;
+
+const resizeImage = (file) =>
+  new Promise((resolve) => {
+    resizer.imageFileResizer(file, 720, 720, "JPEG", 100, 0, resolve, "base64");
+  });
 
 const Uploadfile = ({ form, setForm }) => {
-  // js
   const token = useEcomStore((state) => state.token);
-  const [isLoading, setIsLoading] = useState(false);
-  const handleOnChange = (e) => {
-    const files = e.target.files;
-    if (files) {
-      setIsLoading(true);
-      //[] empty array
-      let allFiles = form.images;
-      for (let i = 0; i < files.length; i++) {
-        // console.log(files[i]);
+  const [uploading, setUploading] = useState(0);
 
-        //   validate
-        const file = files[i];
-        if (!file.type.startsWith("image/")) {
-          toast.error(`File ${file.name} Not photo`);
-          continue;
-        }
-        // image Resize
-        Resizer.default.imageFileResizer(
-          files[i],
-          720,
-          720,
-          "JPEG",
-          100,
-          0,
-          (data) => {
-            // endpoint backend
-            uploadFiles(token, data)
-              .then((res) => {
-                console.log(res);
-                allFiles.push(res.data);
-                setForm({
-                  ...form,
-                  images: allFiles,
-                });
-                toast.success("Upload Image Success !!");
-              })
-              .catch((err) => {
-                console.log(err);
-              });
-          },
-          "base64",
-        );
+  const handleOnChange = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = ""; // ให้เลือกไฟล์เดิมซ้ำได้
+
+    const images = files.filter((file) => {
+      if (!file.type.startsWith("image/")) {
+        toast.error(`ไฟล์ ${file.name} ไม่ใช่รูปภาพ`);
+        return false;
       }
-    }
-  };
-  console.log(form);
+      return true;
+    });
 
-  const handleDelete = (public_id)=>{
-    const images = form.images
-    removeFiles(token,public_id)
-    .then((res)=>{
-      const filterImages = images.filter((item)=>{
-        console.log(item)
-        return item.public_id !== public_id
+    setUploading((n) => n + images.length);
+    await Promise.all(
+      images.map(async (file) => {
+        try {
+          const data = await resizeImage(file);
+          const res = await uploadFiles(token, data);
+          // ใช้ functional update เพื่อไม่ให้รูปที่อัปโหลดพร้อมกันทับกัน
+          setForm((prev) => ({ ...prev, images: [...prev.images, res.data] }));
+        } catch (err) {
+          console.log(err);
+          toast.error(`อัปโหลด ${file.name} ไม่สำเร็จ`);
+        } finally {
+          setUploading((n) => n - 1);
+        }
+      }),
+    );
+    if (images.length > 0) toast.success("อัปโหลดรูปภาพเรียบร้อย");
+  };
+
+  const handleDelete = (public_id) => {
+    removeFiles(token, public_id)
+      .then(() => {
+        setForm((prev) => ({
+          ...prev,
+          images: prev.images.filter((item) => item.public_id !== public_id),
+        }));
+        toast.info("ลบรูปภาพแล้ว");
       })
-      console.log('filter images',filterImages)
-      setForm({
-        ...form,
-        images : filterImages
-      })
-      toast.error(res.data)
-    })
-    .cath((err)=>{
-      console.log(err)
-    })
-  }
+      .catch((err) => {
+        console.log(err);
+        toast.error("ลบรูปภาพไม่สำเร็จ");
+      });
+  };
 
   return (
-    <div className="my-4">
+    <div className="flex flex-wrap gap-3">
+      {form.images.map((item) => (
+        <div key={item.public_id} className="group relative size-24 overflow-hidden rounded-xl border bg-muted/40">
+          <img src={item.url} alt="" className="h-full w-full object-cover" />
+          <button
+            type="button"
+            onClick={() => handleDelete(item.public_id)}
+            aria-label="ลบรูป"
+            className="absolute right-1 top-1 flex size-6 items-center justify-center rounded-full bg-white/90 text-destructive shadow opacity-0 transition-opacity group-hover:opacity-100 focus:opacity-100"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      ))}
 
-      <div className="flex mx-4 gap-4 my-4">
-            {/* Image */}
+      {Array.from({ length: uploading }).map((_, i) => (
+        <div key={`up-${i}`} className="flex size-24 items-center justify-center rounded-xl border bg-muted/40">
+          <Loader2 className="animate-spin text-primary" />
+        </div>
+      ))}
 
-            {
-              form.images.map((item,index)=>
-                   <div className="relative"
-                        key={index}>
-                        <img 
-                        className="w-24 h-24 hover:scale-105"
-                        src={item.url}/>
-                        <span 
-                        onClick={()=>handleDelete(item.public_id)}
-                        className="absolute right-0 top-0 text-red-600 font-bold">X</span>
-                   </div>
-              )
-            }
-
-      </div>
-      
-      <div>
-        <input 
-            onChange={handleOnChange} 
-            type="file" 
-            name="images" 
-            multiple />
-       </div>
-
+      <label className="flex size-24 cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary">
+        <ImagePlus size={22} />
+        เพิ่มรูป
+        <input onChange={handleOnChange} type="file" accept="image/*" multiple className="hidden" />
+      </label>
     </div>
   );
 };

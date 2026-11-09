@@ -1,71 +1,71 @@
-import axios from "axios";
-import React, { useState } from "react";
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
-import useEcomStore from "../../store/econ-store";
-import { useNavigate } from "react-router-dom";
-
-
+import useEcomStore from "../../store/ecom-store";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import AuthShell from "./AuthShell";
 
 const Login = () => {
-  // js
-  const navigate = useNavigate()
-  const actionLogin = useEcomStore((state)=>state.actionLogin)
-  const user = useEcomStore((state)=>state.user)
-  console.log('user form zustand',user)
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
+  const navigate = useNavigate();
+  const location = useLocation();
+  const actionLogin = useEcomStore((state) => state.actionLogin);
+  const [form, setForm] = useState({ email: "", password: "" });
+  const [loading, setLoading] = useState(false);
 
-  const hadleOnChange = (e) => {
-    setForm({
-      // popy object ด้านบน
-      ...form,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
   };
-  const hadleSubmit = async (e) => {
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-     try {
-       const res = await actionLogin(form)
-       const role = res.data.payload.role 
-       roleRedirect(role)
-       toast.success('Welcome Back')
-     } catch (error) {
-       console.log(error)
-       const errMsg = error.response?.data?.message
-       toast.error(errMsg)
-     }
-  };
-  const roleRedirect = (role) =>{
-    if(role === 'admin'){
-      navigate('/admin')
-    }else{
-      navigate('/user')
+    setLoading(true);
+    try {
+      const res = await actionLogin(form);
+      const role = res.data.payload.role;
+      toast.success("ยินดีต้อนรับกลับมา!");
+      if (role === "admin") {
+        navigate("/admin");
+      } else {
+        navigate(location.state?.from || "/", { replace: true });
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.response?.data?.message || "เข้าสู่ระบบไม่สำเร็จ");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
 
   return (
-    <div>
-      Login
-      <form onSubmit={hadleSubmit}>
-        Email
-        <input
-          className="border"
-          onChange={hadleOnChange}
-          name="email"
-          type="email"
-        />
-        Password
-        <input
-          className="border"
-          onChange={hadleOnChange}
-          name="password"
-          type="text"
-        />
-        <button className="bg-blue-500 rounded-md">Login</button>
+    <AuthShell
+      title="เข้าสู่ระบบ"
+      subtitle="ยินดีต้อนรับกลับมา กรุณากรอกข้อมูลของคุณ"
+      footer={
+        <>
+          ยังไม่มีบัญชี?{" "}
+          <Link to="/register" className="font-semibold text-primary hover:underline">
+            สมัครสมาชิก
+          </Link>
+        </>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label htmlFor="email" className="text-sm font-medium">อีเมล</label>
+          <Input id="email" name="email" type="email" required autoComplete="email"
+            placeholder="you@example.com" className="h-11" onChange={handleChange} />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="password" className="text-sm font-medium">รหัสผ่าน</label>
+          <Input id="password" name="password" type="password" required autoComplete="current-password"
+            placeholder="••••••••" className="h-11" onChange={handleChange} />
+        </div>
+        <Button type="submit" disabled={loading} className="h-11 w-full rounded-full text-base font-semibold">
+          {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
+        </Button>
       </form>
-    </div>
+    </AuthShell>
   );
 };
 

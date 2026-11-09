@@ -18,4 +18,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // คอมโพเนนต์จาก shadcn export ทั้ง component และ variants ไว้ด้วยกันตามแบบของ shadcn
+    files: ['src/components/ui/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])

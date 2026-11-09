@@ -1,23 +1,49 @@
-import React from "react";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { lazy, Suspense } from "react";
+import { createBrowserRouter, Link, Navigate, RouterProvider } from "react-router-dom";
+import { Loader2 } from "lucide-react";
 import Home from "../pages/Home";
 import Shop from "../pages/Shop";
+import About from "../pages/About";
 import Cart from "../pages/Cart";
-import History from "../pages/History";
 import Checkout from "../pages/Checkout";
 import Login from "../pages/auth/Login";
-import Register from "../pages/auth/Register";
 import Layout from "../layouts/Layout";
-import LayoutAdmin from "../layouts/LayoutAdmin";
-import Dashboard from "../pages/admin/Dashboard";
-import Category from "../pages/admin/Category";
-import Product from "../pages/admin/Product";
-import Manage from "../pages/admin/Manage";
 import LayoutUser from "../layouts/LayoutUser";
-import HomeUser from "../pages/user/HomeUser";
-import ProtectRouteUser from "./ProtectRouteUser";
-import ProtectRouteAdmin from "./ProtectRouteAdmin";
-import EditProduct from "../pages/admin/EditProduct";
+import ProtectRoute from "./ProtectRoute";
+
+// หน้าที่ใช้ไลบรารีใหญ่ (สมัครสมาชิก/zxcvbn, admin, ชำระเงิน/Stripe) โหลดแยกเมื่อเข้าใช้จริง
+const Register = lazy(() => import("../pages/auth/Register"));
+const LayoutAdmin = lazy(() => import("../layouts/LayoutAdmin"));
+const Dashboard = lazy(() => import("../pages/admin/Dashboard"));
+const Category = lazy(() => import("../pages/admin/Category"));
+const Product = lazy(() => import("../pages/admin/Product"));
+const EditProduct = lazy(() => import("../pages/admin/EditProduct"));
+const Manage = lazy(() => import("../pages/admin/Manage"));
+const ManageOrders = lazy(() => import("../pages/admin/ManageOrders"));
+const History = lazy(() => import("../pages/user/History"));
+const Payment = lazy(() => import("../pages/user/Payment"));
+
+const lazyPage = (element) => (
+  <Suspense
+    fallback={
+      <div className="flex min-h-[50vh] items-center justify-center text-muted-foreground">
+        <Loader2 className="animate-spin" />
+      </div>
+    }
+  >
+    {element}
+  </Suspense>
+);
+
+const NotFound = () => (
+  <div className="flex flex-col items-center gap-3 py-24 text-center">
+    <p className="text-6xl font-black text-primary">404</p>
+    <p className="text-muted-foreground">ไม่พบหน้าที่คุณต้องการ</p>
+    <Link to="/" className="font-semibold text-primary hover:underline">
+      กลับหน้าแรก
+    </Link>
+  </div>
+);
 
 const router = createBrowserRouter([
   {
@@ -26,38 +52,37 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "shop", element: <Shop /> },
+      { path: "about", element: <About /> },
       { path: "cart", element: <Cart /> },
-      { path: "history", element: <History /> },
       { path: "checkout", element: <Checkout /> },
       { path: "login", element: <Login /> },
-      { path: "register", element: <Register /> },
+      { path: "register", element: lazyPage(<Register />) },
+      { path: "*", element: <NotFound /> },
     ],
   },
   {
     path: "/admin",
-    element: <ProtectRouteAdmin element={<LayoutAdmin />} />,
+    element: <ProtectRoute role="admin" element={lazyPage(<LayoutAdmin />)} />,
     children: [
-      { index: true, element: <Dashboard /> },
-      { path: "category", element: <Category /> },
-      { path: "product", element: <Product /> },
-      { path: "product/:id", element: <EditProduct /> },
-      { path: "manage", element: <Manage /> },
+      { index: true, element: lazyPage(<Dashboard />) },
+      { path: "category", element: lazyPage(<Category />) },
+      { path: "product", element: lazyPage(<Product />) },
+      { path: "product/:id", element: lazyPage(<EditProduct />) },
+      { path: "manage", element: lazyPage(<Manage />) },
+      { path: "orders", element: lazyPage(<ManageOrders />) },
     ],
   },
   {
     path: "/user",
-    // element: <LayoutUser />,
-    element: <ProtectRouteUser element={<LayoutUser />} />,
-    children: [{ index: true, element: <HomeUser /> }],
+    element: <ProtectRoute role="user" element={<LayoutUser />} />,
+    children: [
+      { index: true, element: <Navigate to="history" replace /> },
+      { path: "payment", element: lazyPage(<Payment />) },
+      { path: "history", element: lazyPage(<History />) },
+    ],
   },
 ]);
 
-const AppRouter = () => {
-  return (
-    <>
-      <RouterProvider router={router} />
-    </>
-  );
-};
+const AppRouter = () => <RouterProvider router={router} />;
 
 export default AppRouter;

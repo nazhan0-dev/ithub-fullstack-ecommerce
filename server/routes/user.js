@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
-// import miiddlerwares
-const {authCheck , adminCheck} = require('../middllewares/authCheck')
+// import middlewares
+const {authCheck , adminCheck} = require('../middlewares/authCheck')
 // import controllers
 const  {listUsers , 
        changeStatus , 

@@ -11,13 +11,13 @@ const {create ,
        createImages,
        removeImage
     } = require('../controllers/product')
-const {adminCheck , authCheck} = require('../middllewares/authCheck')
+const {adminCheck , authCheck} = require('../middlewares/authCheck')
 //@ENDPOINT http://localhost:8000/api/product
-router.post('/product',create)
+router.post('/product', authCheck, adminCheck, create)
 router.get('/products/:count',list)
 router.get('/product/:id',read)
-router.put('/product/:id',update)
-router.delete('/product/:id',remove)
+router.put('/product/:id', authCheck, adminCheck, update)
+router.delete('/product/:id', authCheck, adminCheck, remove)
 router.post('/productby',listby)
 router.post('/search/filters',searchFilters)
 

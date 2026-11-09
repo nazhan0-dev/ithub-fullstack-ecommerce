@@ -1,13 +1,10 @@
-import React from "react";
 import AppRouter from "./routes/AppRouter";
-import { ToastContainer, toast } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 
 const App = () => {
-  // js
-
   return (
     <>
-    <ToastContainer/>
+      <ToastContainer position="bottom-right" autoClose={2500} theme="light" />
       <AppRouter />
     </>
   );

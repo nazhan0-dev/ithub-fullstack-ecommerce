@@ -1,259 +1,208 @@
-const prisma = require('../config/prisma')
-const cloudinary = require( 'cloudinary').v2;
+const cloudinary = require('cloudinary').v2
+const { query, one, transaction, withCategoryAndImages } = require('../config/db')
 
-exports.create = async(req,res) =>{
+cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+// คอลัมน์ที่อนุญาตให้เรียงลำดับ (กัน SQL injection จากชื่อคอลัมน์)
+const SORTABLE = ['id', 'title', 'price', 'sold', 'quantity', 'createdAt', 'updatedAt']
+
+const toInt = (v, fallback) => {
+    const n = parseInt(v, 10)
+    return Number.isNaN(n) ? fallback : n
+}
+
+const productFields = (body) => [
+    body.title,
+    body.description,
+    parseFloat(body.price),
+    parseInt(body.quantity, 10),
+    body.categoryId === '' || body.categoryId == null ? null : parseInt(body.categoryId, 10),
+]
+
+async function insertImages(productId, images = [], conn) {
+    if (!images.length) return
+    await query(
+        'INSERT INTO image (asset_id, public_id, url, secure_url, productId, createdAt, updatedAt) VALUES ?',
+        [images.map((img) => [img.asset_id || '', img.public_id, img.url, img.secure_url, productId, new Date(), new Date()])],
+        conn
+    )
+}
+
+exports.create = async (req, res) => {
     try {
-        const {title , description , price , quantity , categoryId , images} = req.body
-        const  product = await prisma.product.create({
-            data :{
-                title : title,
-                description : description,
-                price : parseFloat(price) ,
-                quantity : parseInt(quantity),
-                categoryId : parseInt(categoryId),
-                images : {
-                    create : images.map((item)=> ({
-                        asset_id   : item.asset_id || "",
-                        public_id  : item.public_id,
-                        url        : item.url,
-                        secure_url : item.secure_url
-                    }))
-                }
-            }
+        const product = await transaction(async (conn) => {
+            const result = await query(
+                `INSERT INTO product (title, description, price, quantity, categoryId, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
+                productFields(req.body),
+                conn
+            )
+            await insertImages(result.insertId, req.body.images, conn)
+            return one('SELECT * FROM product WHERE id = ?', [result.insertId], conn)
         })
         res.send(product)
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
-exports.list = async(req,res) =>{
+
+exports.list = async (req, res) => {
     try {
-        const {count} = req.params
-        const products = await prisma.product.findMany({
-            // ระบุจำนวนที่จะ list
-            take : parseInt(count),
-            // เรียงสินค้า เพิ่มล่าสุดอยู่บน
-            orderBy : {createdAt : "desc"},
-            include : {
-                category : true,
-                images : true
-            }
-        
-        })
-        res.send(products)
+        const count = toInt(req.params.count, 20)
+        const products = await query('SELECT * FROM product ORDER BY createdAt DESC LIMIT ?', [count])
+        res.send(await withCategoryAndImages(products))
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
-exports.read = async(req,res) =>{
+
+exports.read = async (req, res) => {
     try {
-        const {id} = req.params
-        const products = await prisma.product.findFirst({
-            // ระบุจำนวนที่จะ list
-            where : {
-                id : Number(id)
-            },
-            include : {
-                category : true,
-                images : true
-            }
-        
-        })
-        res.send(products)
+        const product = await one('SELECT * FROM product WHERE id = ?', [Number(req.params.id)])
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' })
+        }
+        const [full] = await withCategoryAndImages([product])
+        res.send(full)
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
-exports.update = async(req,res) =>{
-    try {     
-        const {id} = req.params
-        const {title , description , price , quantity , categoryId , images} = req.body
-        //   clear foto
-        await prisma.image.deleteMany({
-            where : {
-                productId : Number(id)
-            }
+
+exports.update = async (req, res) => {
+    try {
+        const id = Number(req.params.id)
+        const product = await transaction(async (conn) => {
+            const result = await query(
+                `UPDATE product SET title = ?, description = ?, price = ?, quantity = ?, categoryId = ?, updatedAt = UTC_TIMESTAMP(3)
+                 WHERE id = ?`,
+                [...productFields(req.body), id],
+                conn
+            )
+            if (result.affectedRows === 0) return null
+            // แทนที่รูปทั้งหมดด้วยชุดใหม่
+            await query('DELETE FROM image WHERE productId = ?', [id], conn)
+            await insertImages(id, req.body.images, conn)
+            return one('SELECT * FROM product WHERE id = ?', [id], conn)
         })
-       
-        
-        const  product = await prisma.product.update({
-            where :{
-                id : Number(id)
-            },
-            data :{
-                title : title,
-                description : description,
-                price : parseFloat(price) ,
-                quantity : parseInt(quantity),
-                categoryId : parseInt(categoryId),
-                images : {
-                    create : images.map((item)=> ({
-                        asset_id   : item.asset_id,
-                        public_id  : item.public_id,
-                        url        : item.url,
-                        secure_url : item.secure_url
-                    }))
-                }
-            }
-        })
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' })
+        }
         res.send(product)
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
-exports.remove = async(req,res) =>{
+
+exports.remove = async (req, res) => {
     try {
-        const {id} = req.params
-        // เดี่ยวมา
-        await prisma.product.delete({
-            where : {
-                id : Number(id)
-            }
-        })
+        const id = Number(req.params.id)
+        const product = await one('SELECT id FROM product WHERE id = ?', [id])
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' })
+        }
+        // สินค้าที่อยู่ในตะกร้าของลูกค้า ลบไม่ได้ (foreign key) — แจ้งให้ชัดเจน
+        const inCart = await one('SELECT COUNT(*) AS n FROM productoncart WHERE productId = ?', [id])
+        if (inCart.n > 0) {
+            return res.status(400).json({ message: 'สินค้านี้อยู่ในตะกร้าของลูกค้า ยังลบไม่ได้' })
+        }
+        // สินค้าที่เคยถูกสั่งซื้อแล้ว ลบไม่ได้ เพื่อเก็บประวัติคำสั่งซื้อไว้
+        const inOrder = await one('SELECT COUNT(*) AS n FROM productonorder WHERE productId = ?', [id])
+        if (inOrder.n > 0) {
+            return res.status(400).json({ message: 'สินค้านี้มีอยู่ในคำสั่งซื้อแล้ว ลบไม่ได้' })
+        }
+
+        // ลบรูปบน Cloudinary ก่อน แล้วค่อยลบสินค้า (รูปในตาราง image ถูกลบตามอัตโนมัติ)
+        const images = await query('SELECT public_id FROM image WHERE productId = ?', [id])
+        await Promise.all(images.map((image) => cloudinary.uploader.destroy(image.public_id)))
+        await query('DELETE FROM product WHERE id = ?', [id])
         res.send('Delete Success !!')
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
-exports.listby = async(req,res) =>{
+
+exports.listby = async (req, res) => {
     try {
-        const {sort , order , limit} = req.body
-        console.log(sort , order , limit)
-        const products = await prisma.product.findMany({
-            take : limit,
-            orderBy : {[sort] : order},
-            include : {category : true}
-        })
-        res.send(products)
+        const { sort, order, limit } = req.body
+        const column = SORTABLE.includes(sort) ? sort : 'createdAt'
+        const direction = String(order).toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+        const products = await query(`SELECT * FROM product ORDER BY \`${column}\` ${direction} LIMIT ?`, [toInt(limit, 12)])
+        res.send(await withCategoryAndImages(products))
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
 
-const handleQuery = async(req,res,query) =>{
+// ค้นหา + หมวดหมู่ + ช่วงราคา ใช้พร้อมกันได้
+exports.searchFilters = async (req, res) => {
     try {
-        const products  = await prisma.product.findMany({
-            where : {
-                title : {
-                    contains : query,
-                }
-            },
-            include : {
-                category : true,
-                images : true
-            }
-        })
-        res.send(products)
-        
+        const { query: text, category, price } = req.body
+        const where = []
+        const params = []
+
+        if (text) {
+            where.push('title LIKE ?')
+            params.push(`%${String(text).replace(/[\\%_]/g, '\\$&')}%`)
+        }
+        if (Array.isArray(category) && category.length > 0) {
+            where.push('categoryId IN (?)')
+            params.push(category.map((id) => Number(id)))
+        }
+        if (Array.isArray(price) && price.length === 2) {
+            where.push('price BETWEEN ? AND ?')
+            params.push(Number(price[0]), Number(price[1]))
+        }
+
+        const sql = `SELECT * FROM product ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY createdAt DESC`
+        const products = await query(sql, params)
+        res.send(await withCategoryAndImages(products))
     } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Search Error'})
+        res.status(500).json({ message: 'Server Error' })
     }
 }
 
-const handlePrice = async(req,res,priceRange) =>{
-   try {
-     const products = await prisma.product.findMany({
-        where : {
-            price : {
-                gte : priceRange[0],
-                lte : priceRange[1]
-            }
-        },
-        include : {
-             category : true,
-             images : true
-        }
-     })
-     res.send(products)   } catch (error) {
-     console.log(error)
-     res.status(500).json({message : 'Server Error'})
-   }
-}
+// ---------- รูปภาพ (Cloudinary) ----------
 
-const handleCategory = async(req,res,categoryId) =>{
+exports.createImages = async (req, res) => {
     try {
-        const products = await prisma.product.findMany({
-            where : {
-                categoryId : {
-                     in : categoryId.map((id)=>Number(id))
-                }
-            },
-            include : {
-                category : true,
-                images : true
-            }
-        })
-        res.send(products)
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({message : 'Server Error'})
-    }
-}
-
-
-
-exports.searchFilters = async(req,res) =>{
-    try {
-        const {query , category , price} = req.body
-
-        if(query){
-            console.log('query --->',query)
-            await handleQuery(req,res,query)
-        }
-        if(category){
-            console.log('category --->',category)
-            await handleCategory(req,res,category)
-        }
-        if(price){
-            console.log('price --->',price)
-            await handlePrice(req,res,price)
-        }
-        // res.send('Hello Search Filters Prouct')
-    } catch (error) {
-        console.log(error)
-        res.status(500).json({message : 'Server Error'})
-    }
-}
-
-cloudinary.config({
-     cloud_name: process.env.CLOUNDINARY_CLOUD_NAME, 
-    api_key: process.env.CLOUNDINARY_API_KEY, 
-    api_secret: process.env.CLOUNDINARY_API_SECRET
-});
-
-
-exports.createImages = async(req,res) =>{
-     try {
-        // console.log(req.body)
-        const result = await cloudinary.uploader.upload(req.body.image,{
-            public_id : `${Date.now()}`,
-            resource_type : 'auto',
-            folder : 'Ecom'
+        const result = await cloudinary.uploader.upload(req.body.image, {
+            public_id: `${Date.now()}`,
+            resource_type: 'auto',
+            folder: 'Ecom',
         })
         res.send(result)
-     } catch (error) {
+    } catch (error) {
         console.log(error)
-        res.status(500).json({message : 'Server Error'})
-     }
+        res.status(500).json({ message: 'Server Error' })
+    }
 }
-exports.removeImage = async(req,res) =>{
-     try {
-        const {public_id} = req.body
-        // console.log(public_id)
-        cloudinary.uploader.destroy(public_id,(result)=>{
-            res.send( "Remove Image Success !!")
 
-        })
-         
-     } catch (error) {
-        console.log(error)
-        res.status(500).json({message : 'Server Error'})
-     }
+exports.removeImage = async (req, res) => {
+    try {
+        const { public_id } = req.body
+        if (!public_id) {
+            return res.status(400).json({ message: 'public_id is required' })
+        }
+        const result = await cloudinary.uploader.destroy(public_id)
+        // 'not found' = รูปถูกลบไปแล้ว ถือว่าสำเร็จ
+        if (result.result !== 'ok' && result.result !== 'not found') {
+            return res.status(400).json({ message: 'Remove Image Failed' })
+        }
+        res.send('Remove Image Success!!!')
+    } catch (err) {
+        console.log(err)
+        res.status(500).json({ message: 'Server Error' })
+    }
 }

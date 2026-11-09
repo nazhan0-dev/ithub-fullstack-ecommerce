@@ -1,16 +1,16 @@
 const express = require('express')
 // import middlewares
-const {authCheck} = require('../middllewares/authCheck')
-const rounter = express.Router()
+const {authCheck, adminCheck} = require('../middlewares/authCheck')
+const router = express.Router()
 // import controller
 const {getOrderAdmin , changeOrderStatus} = require('../controllers/admin')
 
 
-rounter.put('/admin/order-status',authCheck,changeOrderStatus)
-rounter.get('/admin/orders',authCheck,getOrderAdmin)
+router.put('/admin/order-status',authCheck,adminCheck,changeOrderStatus)
+router.get('/admin/orders',authCheck,adminCheck,getOrderAdmin)
 
 
 
 
 
-module.exports = rounter
+module.exports = router
