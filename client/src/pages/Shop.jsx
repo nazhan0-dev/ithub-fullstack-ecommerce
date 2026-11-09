@@ -70,7 +70,7 @@ const Shop = () => {
         onClear={() => updateParams({ category: undefined })}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr]">
         <div>
           {/* มือถือ: ซ่อนตัวกรองไว้หลังปุ่ม */}
           <button

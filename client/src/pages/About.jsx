@@ -56,7 +56,7 @@ const About = () => {
       </section>
 
       {/* เรื่องราว + ตัวเลข */}
-      <section className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+      <section className="grid grid-cols-1 gap-6 lg:grid-cols-[1.4fr_1fr]">
         <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5 md:p-8">
           <h2 className="text-2xl font-bold tracking-tight">เรื่องราวของเรา</h2>
           {STORY.map((p) => (

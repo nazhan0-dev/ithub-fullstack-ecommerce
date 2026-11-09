@@ -60,15 +60,15 @@ const Cart = () => {
         </Link>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
         {/* รายการสินค้า */}
         <div className="space-y-3">
           {carts.map((item) => (
             <div
               key={item.id}
-              className="flex gap-4 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5"
+              className="flex gap-3 rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5 sm:gap-4"
             >
-              <div className="size-24 shrink-0 overflow-hidden rounded-xl bg-muted/60">
+              <div className="size-20 shrink-0 overflow-hidden rounded-xl bg-muted/60 sm:size-24">
                 {item.images?.length > 0 ? (
                   <img src={item.images[0].url} alt={item.title} className="h-full w-full object-contain p-2" />
                 ) : (
@@ -81,19 +81,19 @@ const Cart = () => {
               <div className="flex min-w-0 flex-1 flex-col justify-between">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate font-semibold">{item.title}</p>
+                    <p className="line-clamp-2 font-semibold leading-snug">{item.title}</p>
                     <p className="text-sm text-muted-foreground">{priceFormat(item.price)} / ชิ้น</p>
                   </div>
                   <button
                     onClick={() => actionRemoveProduct(item.id)}
                     aria-label="ลบสินค้า"
-                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="-mr-1 -mt-1 shrink-0 rounded-full p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                   >
                     <Trash2 size={18} />
                   </button>
                 </div>
 
-                <div className="flex items-center justify-between">
+                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center rounded-full bg-muted p-1">
                     <button
                       onClick={() => actionUpdateQuantity(item.id, item.count - 1)}

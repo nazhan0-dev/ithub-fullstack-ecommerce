@@ -66,7 +66,7 @@ const Checkout = () => {
     <div className="space-y-5">
       <h1 className="text-2xl font-bold tracking-tight">ชำระเงิน</h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_400px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_400px]">
         {/* ที่อยู่ */}
         <section className="h-fit space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-black/5">
           <h2 className="flex items-center gap-2 text-lg font-bold">
