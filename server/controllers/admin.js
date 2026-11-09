@@ -1,4 +1,5 @@
-const { query, one, withLineItems } = require('../config/db')
+const { query, one, transaction, withLineItems } = require('../config/db')
+const { notifyOrderStatus } = require('./notification')
 
 const ORDER_STATUSES = ['Not Process', 'Processing', 'Completed', 'Cancelled']
 
@@ -8,14 +9,22 @@ exports.changeOrderStatus = async (req, res) => {
         if (!ORDER_STATUSES.includes(orderStatus)) {
             return res.status(400).json({ message: 'Invalid order status' })
         }
-        const result = await query(
-            'UPDATE `order` SET orderStatus = ?, updatedAt = UTC_TIMESTAMP(3) WHERE id = ?',
-            [orderStatus, Number(orderId)]
-        )
-        if (result.affectedRows === 0) {
+        const orderUpdate = await transaction(async (conn) => {
+            const before = await one('SELECT orderStatus FROM `order` WHERE id = ? FOR UPDATE', [Number(orderId)], conn)
+            if (!before) return null
+            await query(
+                'UPDATE `order` SET orderStatus = ?, updatedAt = UTC_TIMESTAMP(3) WHERE id = ?',
+                [orderStatus, Number(orderId)],
+                conn
+            )
+            const order = await one('SELECT * FROM `order` WHERE id = ?', [Number(orderId)], conn)
+            // แจ้งลูกค้าเฉพาะเมื่อสถานะเปลี่ยนจริง
+            if (before.orderStatus !== orderStatus) await notifyOrderStatus(order, conn)
+            return order
+        })
+        if (!orderUpdate) {
             return res.status(404).json({ message: 'Order not found' })
         }
-        const orderUpdate = await one('SELECT * FROM `order` WHERE id = ?', [Number(orderId)])
         res.json(orderUpdate)
     } catch (error) {
         console.log(error)

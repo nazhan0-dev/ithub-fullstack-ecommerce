@@ -22,7 +22,7 @@ const ProductForm = ({ form, setForm, onSubmit, submitLabel, submitting, onCance
       <div className="grid gap-4 md:grid-cols-2">
         <div className="md:col-span-2">
           <FieldLabel htmlFor="title">ชื่อสินค้า</FieldLabel>
-          <input id="title" name="title" required value={form.title} onChange={handleChange}
+          <input id="title" name="title" required maxLength={255} value={form.title} onChange={handleChange}
             placeholder="เช่น MSI Gaming Laptop" className={inputClass} />
         </div>
         <div className="md:col-span-2">
@@ -41,7 +41,13 @@ const ProductForm = ({ form, setForm, onSubmit, submitLabel, submitting, onCance
           <input id="quantity" name="quantity" type="number" min="0" required value={form.quantity}
             onChange={handleChange} placeholder="0" className={inputClass} />
         </div>
-        <div className="md:col-span-2">
+        <div>
+          <FieldLabel htmlFor="lowStockThreshold">แจ้งเตือนเมื่อเหลือไม่เกิน (ชิ้น)</FieldLabel>
+          <input id="lowStockThreshold" name="lowStockThreshold" type="number" min="0" required
+            value={form.lowStockThreshold ?? 5} onChange={handleChange} className={inputClass} />
+          <p className="mt-1 text-xs text-muted-foreground">ใส่ 0 = ไม่แจ้งเตือนสินค้านี้</p>
+        </div>
+        <div>
           <FieldLabel htmlFor="categoryId">หมวดหมู่</FieldLabel>
           <select id="categoryId" name="categoryId" required value={form.categoryId ?? ""}
             onChange={handleChange} className={inputClass}>

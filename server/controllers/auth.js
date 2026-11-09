@@ -1,7 +1,6 @@
 const bcrypt = require('bcryptjs')
-const jwt = require('jsonwebtoken')
 const { query, one } = require('../config/db')
-const { setAuthCookie, clearAuthCookie } = require('../config/authCookie')
+const { setAuthCookie, clearAuthCookie, signToken } = require('../config/authCookie')
 
 exports.register = async (req, res) => {
     try {
@@ -45,14 +44,9 @@ exports.login = async (req, res) => {
         }
 
         const payload = { id: user.id, email: user.email, role: user.role }
-        jwt.sign(payload, process.env.SECRET, { expiresIn: '1d' }, (error, token) => {
-            if (error) {
-                return res.status(500).json({ message: 'Server Error' })
-            }
-            // เก็บ token ใน httpOnly cookie (ไม่ส่ง token กลับใน body)
-            setAuthCookie(res, token)
-            res.json({ payload })
-        })
+        // เก็บ token ใน httpOnly cookie (ไม่ส่ง token กลับใน body)
+        setAuthCookie(res, signToken(payload))
+        res.json({ payload })
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'Server Error' })

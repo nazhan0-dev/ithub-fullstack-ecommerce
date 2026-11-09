@@ -36,12 +36,12 @@ const EditProduct = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await updateProduct(id, form);
-      toast.success(`แก้ไข ${res.data.title} เรียบร้อย`);
+      await updateProduct(id, form);
+      toast.success("บันทึกการแก้ไขเรียบร้อย");
       navigate("/admin/product");
     } catch (error) {
       console.log(error);
-      toast.error("แก้ไขสินค้าไม่สำเร็จ");
+      toast.error(error.response?.data?.message || "แก้ไขสินค้าไม่สำเร็จ");
     } finally {
       setSubmitting(false);
     }

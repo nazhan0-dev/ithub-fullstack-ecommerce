@@ -137,8 +137,8 @@ const Shop = () => {
                 loading ? "opacity-60" : ""
               }`}
             >
-              {products.map((item) => (
-                <ProductCard key={item.id} item={item} />
+              {products.map((item, i) => (
+                <ProductCard key={item.id} item={item} index={i} />
               ))}
             </div>
           )}

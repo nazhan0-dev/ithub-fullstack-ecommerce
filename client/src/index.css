@@ -148,5 +148,22 @@
   height: 14px !important;
 }
 .product-swiper {
+  /* เว้นด้านบนให้การ์ดลอยขึ้นตอนชี้เมาส์ได้โดยไม่ถูกตัด */
+  padding-top: 8px !important;
   padding-bottom: 40px !important;
+}
+
+/* แจ้งเตือน (toast) มุมขวาบน — เลื่อนลงให้พ้นแถบเมนูด้านบน (สูง 64px) */
+@media (min-width: 481px) {
+  .Toastify .Toastify__toast-container--top-right {
+    top: 76px;
+  }
+}
+
+/* แถบที่เลื่อนแนวนอนได้ (เช่น แท็บสถานะคำสั่งซื้อ) ไม่ต้องโชว์แถบเลื่อน */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
 }

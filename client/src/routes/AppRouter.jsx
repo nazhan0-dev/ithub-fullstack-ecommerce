@@ -24,6 +24,7 @@ const Manage = lazy(() => import("../pages/admin/Manage"));
 const ManageOrders = lazy(() => import("../pages/admin/ManageOrders"));
 const History = lazy(() => import("../pages/user/History"));
 const Payment = lazy(() => import("../pages/user/Payment"));
+const Wishlist = lazy(() => import("../pages/user/Wishlist"));
 
 const lazyPage = (element) => (
   <Suspense
@@ -88,6 +89,7 @@ const router = createBrowserRouter([
       { index: true, element: <Navigate to="history" replace /> },
       { path: "payment", element: lazyPage(<Payment />) },
       { path: "history", element: lazyPage(<History />) },
+      { path: "wishlist", element: lazyPage(<Wishlist />) },
     ],
   },
 ]);

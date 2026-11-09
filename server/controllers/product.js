@@ -1,5 +1,6 @@
 const cloudinary = require('cloudinary').v2
 const { query, one, transaction, withCategoryAndImages } = require('../config/db')
+const { notifyRestock } = require('./notification')
 
 cloudinary.config({
     cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -21,7 +22,18 @@ const productFields = (body) => [
     parseFloat(body.price),
     parseInt(body.quantity, 10),
     body.categoryId === '' || body.categoryId == null ? null : parseInt(body.categoryId, 10),
+    // เกณฑ์แจ้งเตือนสินค้าใกล้หมด (ไม่ส่งมา = 5, 0 = ไม่แจ้ง)
+    Math.max(0, toInt(body.lowStockThreshold, 5)),
 ]
+
+// ข้อมูลยาวเกินช่องในฐานข้อมูล -> แจ้ง 400 พร้อมบอกว่าช่องไหน (แทน 500 เฉย ๆ)
+const saveError = (res, error) => {
+    console.log(error)
+    if (error.code === 'ER_DATA_TOO_LONG') {
+        return res.status(400).json({ message: 'ข้อความยาวเกินไป (ชื่อสินค้าไม่เกิน 255 ตัวอักษร)' })
+    }
+    res.status(500).json({ message: 'Server Error' })
+}
 
 async function insertImages(productId, images = [], conn) {
     if (!images.length) return
@@ -36,8 +48,8 @@ exports.create = async (req, res) => {
     try {
         const product = await transaction(async (conn) => {
             const result = await query(
-                `INSERT INTO product (title, description, price, quantity, categoryId, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
+                `INSERT INTO product (title, description, price, quantity, categoryId, lowStockThreshold, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
                 productFields(req.body),
                 conn
             )
@@ -46,8 +58,7 @@ exports.create = async (req, res) => {
         })
         res.send(product)
     } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: 'Server Error' })
+        saveError(res, error)
     }
 }
 
@@ -81,7 +92,7 @@ exports.update = async (req, res) => {
         const id = Number(req.params.id)
         const product = await transaction(async (conn) => {
             const result = await query(
-                `UPDATE product SET title = ?, description = ?, price = ?, quantity = ?, categoryId = ?, updatedAt = UTC_TIMESTAMP(3)
+                `UPDATE product SET title = ?, description = ?, price = ?, quantity = ?, categoryId = ?, lowStockThreshold = ?, updatedAt = UTC_TIMESTAMP(3)
                  WHERE id = ?`,
                 [...productFields(req.body), id],
                 conn
@@ -90,15 +101,17 @@ exports.update = async (req, res) => {
             // แทนที่รูปทั้งหมดด้วยชุดใหม่
             await query('DELETE FROM image WHERE productId = ?', [id], conn)
             await insertImages(id, req.body.images, conn)
-            return one('SELECT * FROM product WHERE id = ?', [id], conn)
+            const updated = await one('SELECT * FROM product WHERE id = ?', [id], conn)
+            // เติมสต็อกแล้ว -> แจ้งลูกค้าที่กด "แจ้งเตือนเมื่อมีของ" ไว้
+            await notifyRestock(updated, conn)
+            return updated
         })
         if (!product) {
             return res.status(404).json({ message: 'Product not found' })
         }
         res.send(product)
     } catch (error) {
-        console.log(error)
-        res.status(500).json({ message: 'Server Error' })
+        saveError(res, error)
     }
 }
 

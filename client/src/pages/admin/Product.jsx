@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { ImageOff, Pencil, Plus, Search, Trash2, X } from "lucide-react";
@@ -8,22 +8,26 @@ import { createProduct, deleteProduct } from "../../api/product";
 import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
 import ProductForm from "../../components/admin/ProductForm";
-import { emptyProduct } from "../../utils/product";
+import { emptyProduct, needsRestock, stockThreshold } from "../../utils/product";
 import { PageHeader, Panel } from "../../components/admin/AdminUI";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// ป้ายจำนวนคงเหลือ: หมด = แดง, ใกล้หมด (≤5) = เหลือง
-const StockPill = ({ qty }) => (
-  <span
-    className={cn(
-      "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
-      qty <= 0 ? "bg-red-100 text-red-700" : qty <= 5 ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
-    )}
-  >
-    {qty <= 0 ? "หมด" : qty}
-  </span>
-);
+// ป้ายจำนวนคงเหลือ: หมด = แดง, ใกล้หมด (≤ เกณฑ์ของสินค้านั้น) = เหลือง
+const StockPill = ({ item }) => {
+  const qty = item.quantity;
+  return (
+    <span
+      title={stockThreshold(item) > 0 ? `แจ้งเตือนเมื่อเหลือ ≤ ${stockThreshold(item)}` : "ไม่แจ้งเตือน"}
+      className={cn(
+        "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
+        qty <= 0 ? "bg-red-100 text-red-700" : needsRestock(item) ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700",
+      )}
+    >
+      {qty <= 0 ? "หมด" : qty}
+    </span>
+  );
+};
 
 const Product = () => {
   const getProduct = useEcomStore((state) => state.getProduct);
@@ -36,7 +40,15 @@ const Product = () => {
   const [submitting, setSubmitting] = useState(false);
   const [keyword, setKeyword] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [stockFilter, setStockFilter] = useState("all");
+  const [params] = useSearchParams();
+  // /admin/product?stock=low (ลิงก์จากกระดิ่งแจ้งเตือน) -> กรองสินค้าใกล้หมดให้เลย
+  const stockParam = params.get("stock") || "all";
+  const [stockFilter, setStockFilter] = useState(stockParam);
+  const [prevStockParam, setPrevStockParam] = useState(stockParam);
+  if (stockParam !== prevStockParam) {
+    setPrevStockParam(stockParam);
+    setStockFilter(stockParam);
+  }
 
   useEffect(() => {
     getProduct(100);
@@ -47,14 +59,14 @@ const Product = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await createProduct(form);
-      toast.success(`เพิ่มสินค้า ${res.data.title} เรียบร้อย`);
+      await createProduct(form);
+      toast.success("เพิ่มสินค้าเรียบร้อย");
       setForm(emptyProduct);
       setShowForm(false);
       getProduct(100);
     } catch (error) {
       console.log(error);
-      toast.error("เพิ่มสินค้าไม่สำเร็จ");
+      toast.error(error.response?.data?.message || "เพิ่มสินค้าไม่สำเร็จ");
     } finally {
       setSubmitting(false);
     }
@@ -82,11 +94,11 @@ const Product = () => {
   };
 
   const q = keyword.trim().toLowerCase();
-  const lowCount = products.filter((p) => p.quantity <= 5).length;
+  const lowCount = products.filter(needsRestock).length;
   const filtered = products
     .filter((p) => !q || p.title.toLowerCase().includes(q) || p.description?.toLowerCase().includes(q))
     .filter((p) => categoryFilter === "all" || String(p.categoryId) === categoryFilter)
-    .filter((p) => stockFilter === "all" || (stockFilter === "low" ? p.quantity <= 5 : p.quantity <= 0));
+    .filter((p) => stockFilter === "all" || (stockFilter === "low" ? needsRestock(p) : p.quantity <= 0));
 
   return (
     <div>
@@ -144,7 +156,7 @@ const Product = () => {
               className="h-9 flex-1 rounded-full border bg-white px-3 text-sm md:flex-none"
             >
               <option value="all">ทุกสถานะสต็อก</option>
-              <option value="low">ใกล้หมด (≤ 5) · {lowCount}</option>
+              <option value="low">ใกล้หมด · {lowCount}</option>
               <option value="out">หมดแล้ว</option>
             </select>
           </div>
@@ -168,7 +180,7 @@ const Product = () => {
                 <p className="truncate font-medium">{item.title}</p>
                 <p className="text-sm font-semibold text-primary">{priceFormat(item.price)}</p>
                 <p className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                  <StockPill qty={item.quantity} />
+                  <StockPill item={item} />
                   {item.category?.name && <span>{item.category.name.trim()}</span>}
                   <span>· ขายแล้ว {item.sold}</span>
                 </p>
@@ -231,7 +243,7 @@ const Product = () => {
                   </td>
                   <td className="px-4 py-3 text-right font-semibold">{priceFormat(item.price)}</td>
                   <td className="px-4 py-3 text-center">
-                    <StockPill qty={item.quantity} />
+                    <StockPill item={item} />
                   </td>
                   <td className="px-4 py-3 text-right">{item.sold}</td>
                   <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{dateFormat(item.updatedAt)}</td>

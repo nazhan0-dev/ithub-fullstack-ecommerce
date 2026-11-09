@@ -7,7 +7,7 @@ import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
 import { PageHeader, Panel } from "../../components/admin/AdminUI";
 import OrderStatusBadge from "../../components/OrderStatusBadge";
-import { ORDER_STATUSES, STATUS_LABELS } from "../../utils/orderStatus";
+import { ORDER_STATUSES, STATUS_LABELS, orderCode, parseOrderCode } from "../../utils/orderStatus";
 import { cn } from "@/lib/utils";
 
 const StatusSelect = ({ value, onChange, className }) => (
@@ -45,7 +45,7 @@ const ManageOrders = () => {
   const handleChangeStatus = (orderId, next) => {
     changeOrderStatus(orderId, next)
       .then(() => {
-        toast.success(`เปลี่ยนสถานะ #${orderId} เป็น "${STATUS_LABELS[next]}"`);
+        toast.success(`เปลี่ยนสถานะ #${orderCode(orderId)} เป็น "${STATUS_LABELS[next]}"`);
         loadOrders();
       })
       .catch((err) => {
@@ -58,10 +58,11 @@ const ManageOrders = () => {
 
   const count = (s) => (s === "all" ? orders.length : orders.filter((o) => o.orderStatus === s).length);
   const q = keyword.trim().toLowerCase().replace(/^#/, "");
+  const qId = parseOrderCode(keyword); // ค้นด้วย ORD-00020 / #20 / 20 ได้
   const filtered = [...orders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .filter((o) => status === "all" || o.orderStatus === status)
-    .filter((o) => !q || String(o.id) === q || o.orderedBy?.email?.toLowerCase().includes(q));
+    .filter((o) => !q || o.id === qId || o.orderedBy?.email?.toLowerCase().includes(q));
 
   const tabs = ["all", ...ORDER_STATUSES];
 
@@ -99,7 +100,7 @@ const ManageOrders = () => {
             <input
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              placeholder="ค้นหาอีเมล หรือ #เลขคำสั่งซื้อ"
+              placeholder="ค้นหาอีเมล หรือเลขคำสั่งซื้อ (ORD-00020)"
               className="h-9 w-full rounded-full bg-muted pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
@@ -112,7 +113,7 @@ const ManageOrders = () => {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{item.orderedBy?.email}</p>
-                  <p className="text-xs text-muted-foreground">#{item.id} · {dateFormat(item.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">#{orderCode(item.id)} · {dateFormat(item.createdAt)}</p>
                 </div>
                 <OrderStatusBadge status={item.orderStatus} />
               </div>
@@ -153,7 +154,7 @@ const ManageOrders = () => {
               {filtered.map((item) => (
                 <tr key={item.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3">
-                    <p className="font-mono font-semibold">#{item.id}</p>
+                    <p className="font-mono font-semibold">#{orderCode(item.id)}</p>
                     <p className="whitespace-nowrap text-xs text-muted-foreground">{dateFormat(item.createdAt)}</p>
                   </td>
                   <td className="px-4 py-3">

@@ -7,7 +7,8 @@ REST API ของร้าน IT Hub — Express 5 + MySQL 8 (`mysql2`)
 
 ## การยืนยันตัวตน
 
-- `POST /api/login` สำเร็จ → server ส่ง **httpOnly cookie** ชื่อ `token` (JWT อายุ 1 วัน) กลับมา ตัว token **ไม่อยู่ใน response body**
+- `POST /api/login` สำเร็จ → server ส่ง **httpOnly cookie** ชื่อ `token` (JWT) กลับมา ตัว token **ไม่อยู่ใน response body**
+- อายุ: ไม่ใช้งานเกิน 2 ชั่วโมงหมดอายุ — request ที่ผ่าน `authCheck` จะได้ cookie ใหม่ (ต่ออายุ) ถ้า token ใช้มาเกิน 5 นาที ต่อได้รวมไม่เกิน 1 วันนับจาก login (เกินแล้วได้ `401 Session expired`) — ส่ง header `X-Background: 1` เพื่อไม่ให้ต่ออายุ
 - request ถัดไปเบราว์เซอร์แนบ cookie ให้อัตโนมัติ — ฝั่งหน้าเว็บต้องตั้ง `withCredentials: true` (axios) หรือ `credentials: "include"` (fetch)
 - `POST /api/logout` ลบ cookie
 - เครื่องมือทดสอบ API (Postman, curl) ส่ง header `Authorization: Bearer <token>` แทน cookie ได้
@@ -60,7 +61,7 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | GET | `/product/:id` | 🌐 | `404` ถ้าไม่พบ |
 | POST | `/productby` | 🌐 | `{ "sort": "sold", "order": "desc", "limit": 12 }` — `sort`: `id` `title` `price` `sold` `quantity` `createdAt` `updatedAt` |
 | POST | `/search/filters` | 🌐 | `{ "query": "mouse", "category": [1, 2], "price": [100, 5000] }` — ใส่ช่องเดียวหรือหลายช่องพร้อมกันได้ |
-| POST | `/product` | 🛡️ | `{ "title", "description", "price", "quantity", "categoryId", "images": [] }` |
+| POST | `/product` | 🛡️ | `{ "title", "description", "price", "quantity", "categoryId", "lowStockThreshold", "images": [] }` — `lowStockThreshold` ไม่ส่ง = 5, `0` = ไม่แจ้งเตือน |
 | PUT | `/product/:id` | 🛡️ | เหมือน POST — `images` จะแทนที่รูปเดิมทั้งหมด |
 | DELETE | `/product/:id` | 🛡️ | ลบไม่ได้ถ้าสินค้าอยู่ในตะกร้าหรือคำสั่งซื้อแล้ว (`400`) |
 | POST | `/images` | 🛡️ | `{ "image": "<base64>" }` อัปโหลดขึ้น Cloudinary |
@@ -78,11 +79,30 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยใช้ |
 | GET | `/user/order` | 👤 | `{ ok, orders }` — ยังไม่มีคำสั่งซื้อได้ `orders: []` |
 
+### แจ้งเตือน (ลูกค้า)
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| GET | `/user/notifications` | 👤 | `{ notifications, unread }` — 20 รายการล่าสุด, `type`: `order_status` · `restock` |
+| POST | `/user/notifications/read` | 👤 | `{ "id": 3 }` อ่านรายการเดียว — ไม่ส่ง `id` = อ่านทั้งหมด |
+| GET | `/user/restock-alert/:productId` | 👤 | `{ subscribed }` |
+| POST | `/user/restock-alert/:productId` | 👤 | `{ "subscribe": true }` รอสินค้ามีของ (เฉพาะสินค้าที่หมด ไม่งั้น `400`) · `false` = ยกเลิก |
+
+### รายการโปรด (ลูกค้า)
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| GET | `/user/wishlist` | 👤 | สินค้าที่กดหัวใจไว้ (ล่าสุดก่อน) พร้อม `category` และ `images` |
+| POST | `/user/wishlist/:productId` | 👤 | `{ "liked": true }` กดหัวใจ · `false` = เอาออก — สินค้าไม่มีได้ `404` |
+
+แจ้งเตือนถูกสร้างอัตโนมัติเมื่อ admin เปลี่ยนสถานะคำสั่งซื้อ (`PUT /admin/order-status`) และเมื่อแก้สินค้าที่หมดให้มีสต็อก (`PUT /product/:id`)
+
 ### ผู้ดูแลระบบ
 
 | Method | Endpoint | สิทธิ์ | Body |
 |---|---|---|---|
 | GET | `/admin/orders` | 🛡️ | คำสั่งซื้อทั้งหมด พร้อมลูกค้าและรายการสินค้า |
+| GET | `/admin/low-stock` | 🛡️ | สินค้าที่คงเหลือ ≤ `lowStockThreshold` ของตัวเอง เรียงจากน้อยไปมาก + `waiting` (จำนวนลูกค้าที่รอของ) |
 | PUT | `/admin/order-status` | 🛡️ | `{ "orderId": 1, "orderStatus": "Completed" }` — `Not Process` · `Processing` · `Completed` · `Cancelled` |
 | GET | `/users` | 🛡️ | — |
 | POST | `/change-status` | 🛡️ | `{ "id": 1, "enabled": false }` |

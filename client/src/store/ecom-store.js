@@ -4,6 +4,7 @@ import { login, logoutUser } from "../api/auth";
 import { setUnauthorizedHandler } from "../api/client";
 import { listCategory } from "../api/category";
 import { listProduct, searchFilters } from "../api/product";
+import { getWishlist, setWishlist } from "../api/user";
 
 const ecomStore = (set, get) => ({
   // token อยู่ใน httpOnly cookie (JavaScript อ่านไม่ได้) — เก็บแค่ข้อมูลผู้ใช้ไว้แสดงผล
@@ -11,6 +12,7 @@ const ecomStore = (set, get) => ({
   categories: [],
   products: [],
   carts: [],
+  wishlist: [], // id สินค้าที่กดหัวใจไว้ (โหลดจาก server เมื่อ login)
 
   logout: async () => {
     try {
@@ -21,7 +23,7 @@ const ecomStore = (set, get) => ({
     get().clearSession();
   },
   // ล้างสถานะ login ฝั่งหน้าเว็บ (ใช้ตอน logout และตอน cookie หมดอายุ)
-  clearSession: () => set({ user: null, carts: [] }),
+  clearSession: () => set({ user: null, carts: [], wishlist: [] }),
   actionAddtoCart: (product) => {
     const carts = get().carts;
     const exists = carts.find((item) => item.id === product.id);
@@ -85,6 +87,32 @@ const ecomStore = (set, get) => ({
     }
   },
   clearCart: () => set({ carts: [] }),
+  loadWishlist: async () => {
+    try {
+      const res = await getWishlist();
+      set({ wishlist: res.data.map((p) => p.id) });
+    } catch (error) {
+      console.log(error);
+    }
+  },
+  // กดหัวใจ: เปลี่ยนบนหน้าจอทันที แล้วค่อยบันทึก (ถ้าบันทึกไม่ผ่านจะย้อนกลับ)
+  toggleWishlist: async (productId) => {
+    const liked = !get().wishlist.includes(productId);
+    const apply = (on) =>
+      set((state) => ({
+        wishlist: on
+          ? [productId, ...state.wishlist.filter((id) => id !== productId)]
+          : state.wishlist.filter((id) => id !== productId),
+      }));
+    apply(liked);
+    try {
+      await setWishlist(productId, liked);
+      return liked;
+    } catch (error) {
+      apply(!liked);
+      throw error;
+    }
+  },
 });
 
 const usePersist = {

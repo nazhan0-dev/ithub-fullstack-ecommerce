@@ -45,9 +45,9 @@ const ProductSection = ({ title, subtitle, sort, order = "desc", limit = 12 }) =
         </p>
       ) : (
         <SwiperShowProduct>
-          {data.map((el) => (
+          {data.map((el, i) => (
             <SwiperSlide key={el.id} className="!h-auto">
-              <ProductCard item={el} />
+              <ProductCard item={el} index={i} />
             </SwiperSlide>
           ))}
         </SwiperShowProduct>

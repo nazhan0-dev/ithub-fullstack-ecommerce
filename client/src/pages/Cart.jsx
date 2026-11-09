@@ -5,6 +5,7 @@ import { ImageOff, Minus, Plus, ShoppingCart, Trash2, ArrowLeft } from "lucide-r
 import useEcomStore from "../store/ecom-store";
 import { createUserCart } from "../api/user";
 import { priceFormat } from "../utils/number";
+import { warnStockLimit } from "../utils/product";
 import { Button } from "@/components/ui/button";
 
 const Cart = () => {
@@ -104,8 +105,11 @@ const Cart = () => {
                     </button>
                     <span className="w-10 text-center text-sm font-semibold">{item.count}</span>
                     <button
-                      onClick={() => actionUpdateQuantity(item.id, item.count + 1)}
-                      disabled={item.quantity !== undefined && item.count >= item.quantity}
+                      onClick={() =>
+                        item.quantity !== undefined && item.count >= item.quantity
+                          ? warnStockLimit(toast, item)
+                          : actionUpdateQuantity(item.id, item.count + 1)
+                      }
                       aria-label="เพิ่มจำนวน"
                       className="flex size-7 items-center justify-center rounded-full bg-white shadow-sm disabled:opacity-40"
                     >

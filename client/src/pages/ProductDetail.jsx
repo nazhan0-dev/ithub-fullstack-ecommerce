@@ -1,31 +1,44 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ImageOff, Loader2, Minus, Plus, ShoppingCart, Zap } from "lucide-react";
-import { motion } from "motion/react";
+import { ArrowLeft, Bell, BellOff, ChevronLeft, ChevronRight, ImageOff, Loader2, Minus, Plus, ShoppingCart, Zap } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { toast } from "react-toastify";
 import { readProduct } from "../api/product";
+import { getRestockAlert, setRestockAlert } from "../api/user";
+import { warnStockLimit } from "../utils/product";
+import HeartButton from "../components/HeartButton";
 import useEcomStore from "../store/ecom-store";
 import { priceFormat } from "../utils/number";
 import { cn } from "@/lib/utils";
 
 // หน้ารายละเอียดสินค้า (/product/:id) — กดการ์ดสินค้าแล้วมาหน้านี้
-const ProductDetail = () => {
-  const { id } = useParams();
+const ProductDetail = ({ id }) => {
   const navigate = useNavigate();
   const carts = useEcomStore((s) => s.carts);
   const actionAddtoCart = useEcomStore((s) => s.actionAddtoCart);
   const actionUpdateQuantity = useEcomStore((s) => s.actionUpdateQuantity);
+  const user = useEcomStore((s) => s.user);
 
   const [product, setProduct] = useState(null);
   const [status, setStatus] = useState("loading"); // loading | ok | notfound
   const [active, setActive] = useState(0);
   const [qty, setQty] = useState(1);
+  const [subscribedRaw, setSubscribed] = useState(false); // กด "แจ้งเตือนเมื่อมีของ" ไว้แล้วหรือยัง
+  const [subscribing, setSubscribing] = useState(false);
+  const [hovering, setHovering] = useState(false); // เมาส์อยู่บนรูป -> หยุดเลื่อนอัตโนมัติ
+  const reduceMotion = useReducedMotion();
+
+  // เลื่อนรูปอัตโนมัติทุก 4 วินาที (กดเลือกรูปเอง = นับเวลาใหม่)
+  const imageCount = product?.images?.length || 0;
+  useEffect(() => {
+    if (imageCount < 2 || hovering || reduceMotion) return;
+    const t = setTimeout(() => setActive((a) => (a + 1) % imageCount), 4000);
+    return () => clearTimeout(t);
+  }, [active, imageCount, hovering, reduceMotion]);
+  const go = (step) => setActive((a) => (a + step + imageCount) % imageCount);
 
   useEffect(() => {
     let cancelled = false;
-    setStatus("loading");
-    setActive(0);
-    setQty(1);
     readProduct(id)
       .then((res) => {
         if (cancelled) return;
@@ -37,6 +50,16 @@ const ProductDetail = () => {
       cancelled = true;
     };
   }, [id]);
+
+  // สินค้าหมด + login แล้ว -> เช็กว่าเคยกดรอไว้หรือยัง
+  const soldOut = status === "ok" && product?.quantity <= 0;
+  const subscribed = soldOut && !!user && subscribedRaw;
+  useEffect(() => {
+    if (!soldOut || !user) return;
+    getRestockAlert(id)
+      .then((res) => setSubscribed(res.data.subscribed))
+      .catch(() => {});
+  }, [id, soldOut, user]);
 
   if (status === "loading") {
     return (
@@ -64,15 +87,33 @@ const ProductDetail = () => {
 
   const addToCart = () => {
     if (canAdd <= 0) {
-      toast.info("สินค้านี้ในตะกร้าครบจำนวนสต็อกแล้ว");
+      warnStockLimit(toast, product);
       return false;
     }
     const amount = Math.min(qty, canAdd);
     if (!inCart) actionAddtoCart(product);
     actionUpdateQuantity(product.id, inCart + amount);
-    toast.success(`เพิ่ม ${product.title} ${amount} ชิ้นลงตะกร้าแล้ว`);
+    toast.success(`เพิ่มลงตะกร้าแล้ว ${amount} ชิ้น`);
     setQty(1);
     return true;
+  };
+
+  const toggleRestock = async () => {
+    if (!user) {
+      toast.info("เข้าสู่ระบบก่อน เพื่อรับการแจ้งเตือนเมื่อสินค้ามีของ");
+      navigate("/login");
+      return;
+    }
+    setSubscribing(true);
+    try {
+      const res = await setRestockAlert(product.id, !subscribed);
+      setSubscribed(res.data.subscribed);
+      toast.success(res.data.subscribed ? "เราจะแจ้งเตือนเมื่อสินค้ากลับมามีของ" : "ยกเลิกการแจ้งเตือนแล้ว");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "ทำรายการไม่สำเร็จ");
+    } finally {
+      setSubscribing(false);
+    }
   };
 
   const buyNow = () => {
@@ -96,7 +137,11 @@ const ProductDetail = () => {
       >
         {/* รูปสินค้า */}
         <div className="min-w-0 space-y-3">
-          <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted/60">
+          <div
+            className="group relative aspect-square overflow-hidden rounded-2xl bg-muted/60"
+            onMouseEnter={() => setHovering(true)}
+            onMouseLeave={() => setHovering(false)}
+          >
             {images.length > 0 ? (
               <motion.img
                 key={images[active]?.url}
@@ -104,7 +149,16 @@ const ProductDetail = () => {
                 animate={{ opacity: 1 }}
                 src={images[active]?.url}
                 alt={product.title}
-                className="h-full w-full object-contain p-6"
+                draggable={false}
+                // ปัดซ้าย/ขวาเพื่อเปลี่ยนรูป (มือถือ / ลากเมาส์)
+                drag={images.length > 1 ? "x" : false}
+                dragConstraints={{ left: 0, right: 0 }}
+                dragElastic={0.3}
+                onDragEnd={(_, info) => {
+                  if (info.offset.x < -50) go(1);
+                  else if (info.offset.x > 50) go(-1);
+                }}
+                className={cn("h-full w-full object-contain p-6", images.length > 1 && "cursor-grab active:cursor-grabbing")}
               />
             ) : (
               <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
@@ -112,26 +166,49 @@ const ProductDetail = () => {
                 <span className="text-sm">ไม่มีรูปภาพ</span>
               </div>
             )}
+            {images.length > 1 && (
+              <>
+                {[
+                  { step: -1, Icon: ChevronLeft, label: "รูปก่อนหน้า", side: "left-3" },
+                  { step: 1, Icon: ChevronRight, label: "รูปถัดไป", side: "right-3" },
+                ].map(({ step, Icon, label, side }) => (
+                  <button
+                    key={step}
+                    onClick={() => go(step)}
+                    aria-label={label}
+                    className={cn(
+                      "absolute top-1/2 z-10 grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-foreground shadow-md transition hover:bg-white md:opacity-0 md:group-hover:opacity-100",
+                      side,
+                    )}
+                  >
+                    <Icon size={18} />
+                  </button>
+                ))}
+                <span className="absolute bottom-3 right-3 z-10 rounded-full bg-black/50 px-2.5 py-0.5 text-xs font-medium text-white">
+                  {active + 1} / {images.length}
+                </span>
+              </>
+            )}
             {outOfStock && (
-              <span className="absolute inset-0 flex items-center justify-center bg-white/60 text-lg font-semibold text-muted-foreground">
+              <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-white/60 text-lg font-semibold text-muted-foreground">
                 สินค้าหมด
               </span>
             )}
           </div>
 
           {images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
+            <div className="flex gap-3 overflow-x-auto p-1">
               {images.map((img, i) => (
                 <button
                   key={img.id ?? img.url}
                   onClick={() => setActive(i)}
                   aria-label={`ดูรูปที่ ${i + 1}`}
                   className={cn(
-                    "size-16 shrink-0 overflow-hidden rounded-xl bg-muted/60 ring-2 transition sm:size-20",
-                    i === active ? "ring-primary" : "ring-transparent hover:ring-primary/40",
+                    "size-16 shrink-0 overflow-hidden rounded-xl border-2 bg-white transition sm:size-20",
+                    i === active ? "border-primary" : "border-border hover:border-primary/40",
                   )}
                 >
-                  <img src={img.url} alt="" className="h-full w-full object-contain p-1" />
+                  <img src={img.url} alt="" className="h-full w-full object-contain p-1.5" />
                 </button>
               ))}
             </div>
@@ -149,7 +226,10 @@ const ProductDetail = () => {
                 {product.category.name}
               </Link>
             )}
-            <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{product.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-2xl font-bold leading-tight sm:text-3xl">{product.title}</h1>
+              <HeartButton productId={product.id} className="size-11 shrink-0" size={22} />
+            </div>
             <p className="text-sm text-muted-foreground">ขายแล้ว {product.sold} ชิ้น</p>
           </div>
 
@@ -190,8 +270,7 @@ const ProductDetail = () => {
                   </button>
                   <span className="w-10 text-center font-semibold">{Math.min(qty, canAdd)}</span>
                   <button
-                    onClick={() => setQty((q) => Math.min(canAdd, q + 1))}
-                    disabled={qty >= canAdd}
+                    onClick={() => (qty >= canAdd ? warnStockLimit(toast, product) : setQty(qty + 1))}
                     aria-label="เพิ่มจำนวน"
                     className="grid size-9 place-items-center rounded-full hover:bg-muted disabled:opacity-40"
                   >
@@ -201,7 +280,22 @@ const ProductDetail = () => {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            {outOfStock && (
+              <button
+                onClick={toggleRestock}
+                disabled={subscribing}
+                className={
+                  subscribed
+                    ? "inline-flex w-full items-center justify-center gap-2 rounded-full border px-4 py-3 font-semibold text-muted-foreground transition hover:bg-muted active:scale-[0.97] disabled:opacity-60"
+                    : "inline-flex w-full items-center justify-center gap-2 rounded-full bg-primary px-4 py-3 font-semibold text-primary-foreground transition hover:bg-primary/90 active:scale-[0.97] disabled:opacity-60"
+                }
+              >
+                {subscribed ? <BellOff size={18} /> : <Bell size={18} />}
+                {subscribed ? "รอแจ้งเตือนอยู่ · กดเพื่อยกเลิก" : "แจ้งเตือนเมื่อสินค้ามีของ"}
+              </button>
+            )}
+
+            <div className={outOfStock ? "hidden" : "grid grid-cols-2 gap-3"}>
               <button
                 onClick={addToCart}
                 disabled={outOfStock}
@@ -224,4 +318,10 @@ const ProductDetail = () => {
   );
 };
 
-export default ProductDetail;
+// key={id}: เปลี่ยนสินค้าแล้วเริ่ม state ใหม่ทั้งหมด (รูปที่เลือก, จำนวน, สถานะโหลด)
+const ProductDetailPage = () => {
+  const { id } = useParams();
+  return <ProductDetail key={id} id={id} />;
+};
+
+export default ProductDetailPage;

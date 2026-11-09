@@ -8,8 +8,8 @@ const LayoutUser = () => {
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         <Outlet />
       </main>
-      <footer className="border-t bg-white py-6 text-center text-sm text-muted-foreground">
-        <nav className="mb-2 flex justify-center gap-5">
+      <footer className="border-t bg-white pb-[calc(5.5rem+env(safe-area-inset-bottom))] pt-6 text-center md:pb-6 text-sm text-muted-foreground">
+        <nav className="mb-2 hidden justify-center gap-5 md:flex">
           <Link to="/" className="hover:text-primary">หน้าแรก</Link>
           <Link to="/shop" className="hover:text-primary">ร้านค้า</Link>
           <Link to="/about" className="hover:text-primary">เกี่ยวกับเรา</Link>

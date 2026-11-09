@@ -21,4 +21,8 @@ api.interceptors.response.use(
   },
 );
 
+// request เบื้องหลังที่หน้าเว็บเช็กเอง (เช่น โหลดแจ้งเตือนทุก 1 นาที)
+// server จะไม่นับว่าผู้ใช้กำลังใช้งาน -> ไม่ต่ออายุการ login ให้
+export const BACKGROUND = { headers: { "X-Background": "1" } };
+
 export default api;

@@ -9,6 +9,8 @@ import { dateFormat } from "../../utils/dateformat";
 import { PageHeader, Panel } from "../../components/admin/AdminUI";
 import OrderStatusBadge from "../../components/OrderStatusBadge";
 import { RevenueChart, StatusBreakdown, TopProducts } from "../../components/admin/DashboardCharts";
+import { needsRestock, stockThreshold } from "../../utils/product";
+import { orderCode } from "../../utils/orderStatus";
 import { cn } from "@/lib/utils";
 
 const RANGES = [
@@ -73,7 +75,7 @@ const Dashboard = () => {
   const prevRevenue = sumRevenue(prevOrders);
   const pctChange = (cur, prev) => (prev > 0 ? Math.round(((cur - prev) / prev) * 100) : null);
 
-  const lowStock = products.filter((p) => p.quantity <= 5).sort((a, b) => a.quantity - b.quantity);
+  const lowStock = products.filter(needsRestock).sort((a, b) => a.quantity - b.quantity);
   const pending = orders.filter((o) => o.orderStatus === "Not Process").length;
   const recent = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5);
 
@@ -158,7 +160,7 @@ const Dashboard = () => {
               <li key={o.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">
                   <p className="truncate font-medium">{o.orderedBy?.email}</p>
-                  <p className="text-xs text-muted-foreground">#{o.id} · {dateFormat(o.createdAt)}</p>
+                  <p className="text-xs text-muted-foreground">#{orderCode(o.id)} · {dateFormat(o.createdAt)}</p>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <span className="font-semibold">{priceFormat(o.cartTotal)}</span>
@@ -173,7 +175,7 @@ const Dashboard = () => {
         <Panel className="overflow-hidden">
           <div className="border-b px-5 py-4">
             <h2 className="font-bold">สินค้าใกล้หมด</h2>
-            <p className="text-xs text-muted-foreground">คงเหลือ 5 ชิ้นหรือน้อยกว่า</p>
+            <p className="text-xs text-muted-foreground">คงเหลือถึงเกณฑ์ที่ตั้งไว้ของแต่ละสินค้า</p>
           </div>
           <ul className="divide-y">
             {lowStock.slice(0, 6).map((p) => (
@@ -181,7 +183,7 @@ const Dashboard = () => {
                 <Link to={`/admin/product/${p.id}`} className="truncate hover:text-primary">{p.title}</Link>
                 <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold",
                   p.quantity <= 0 ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
-                  {p.quantity <= 0 ? "หมด" : `เหลือ ${p.quantity}`}
+                  {p.quantity <= 0 ? "หมด" : `เหลือ ${p.quantity} / ${stockThreshold(p)}`}
                 </span>
               </li>
             ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
@@ -10,8 +10,12 @@ import {
   LayoutDashboard,
   User,
   Info,
+  Heart,
 } from "lucide-react";
+import { motion } from "motion/react";
 import useEcomStore from "../store/ecom-store";
+import useMediaQuery from "../hooks/useMediaQuery";
+import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo.png";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,11 +30,63 @@ import { cn } from "@/lib/utils";
 
 const navItemClass = ({ isActive }) =>
   cn(
-    "flex items-center gap-2 rounded-full px-3 py-2 text-sm font-medium transition-colors",
+    "flex items-center gap-2 rounded-full px-2.5 py-2 text-sm font-medium transition-colors sm:px-3",
     isActive
       ? "bg-secondary text-secondary-foreground"
       : "text-muted-foreground hover:bg-muted hover:text-foreground",
   );
+
+const CountBadge = ({ value, className }) => (
+  <span
+    className={cn(
+      "absolute -right-2.5 -top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white",
+      className,
+    )}
+  >
+    {value > 99 ? "99+" : value}
+  </span>
+);
+
+// แถบเมนูด้านล่าง (มือถือ / จอเล็ก) — พื้นสีอ่อนเลื่อนตามเมนูที่เลือก
+const BottomNav = ({ items, user }) => (
+  <nav
+    className="fixed inset-x-0 bottom-0 z-40 border-t bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur"
+    aria-label="เมนูหลัก"
+  >
+    <div className="mx-auto flex max-w-md items-stretch px-2 py-1">
+      {items.map(({ to, icon: Icon, label, badge }) => (
+        <NavLink
+          key={to}
+          to={to}
+          className={({ isActive }) =>
+            cn(
+              "relative flex flex-1 flex-col items-center gap-0.5 rounded-xl py-1.5 text-[11px] font-medium transition-colors",
+              isActive ? "text-primary" : "text-muted-foreground",
+            )
+          }
+        >
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="bottom-nav-active"
+                  transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  className="absolute inset-x-1 inset-y-0 rounded-xl bg-secondary"
+                />
+              )}
+              <span className="relative">
+                <Icon size={20} />
+                {badge > 0 && <CountBadge value={badge} />}
+              </span>
+              <span className="relative">{label}</span>
+            </>
+          )}
+        </NavLink>
+      ))}
+      {user && <NotificationBell variant="tab" />}
+    </div>
+  </nav>
+);
 
 const SearchBox = ({ className }) => {
   const navigate = useNavigate();
@@ -72,53 +128,56 @@ const MainNav = () => {
   const carts = useEcomStore((state) => state.carts);
   const user = useEcomStore((state) => state.user);
   const logout = useEcomStore((state) => state.logout);
+  const loadWishlist = useEcomStore((state) => state.loadWishlist);
+  const wishCount = useEcomStore((state) => state.wishlist.length);
+
+  // login แล้ว -> โหลดรายการโปรดจาก server (หัวใจบนการ์ดจะแดงตามที่เคยกดไว้)
+  const userId = user?.id;
+  useEffect(() => {
+    if (userId) loadWishlist();
+  }, [userId, loadWishlist]);
   const navigate = useNavigate();
 
   const cartCount = carts.reduce((sum, item) => sum + item.count, 0);
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+
+  const items = [
+    { to: "/shop", icon: Store, label: "ร้านค้า" },
+    { to: "/about", icon: Info, label: "เกี่ยวกับเรา" },
+    ...(user ? [{ to: "/user/history", icon: Package, label: "คำสั่งซื้อ" }] : []),
+    { to: "/cart", icon: ShoppingCart, label: "ตะกร้า", badge: cartCount },
+  ];
 
   const handleLogout = async () => {
     await logout();
     navigate("/");
   };
 
-  return (
+  const header = (
     <header className="sticky top-0 z-40 border-b bg-white/90 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center gap-2 px-4 sm:gap-4">
         <Link to="/" className="shrink-0" aria-label="IT Hub หน้าแรก">
-          <img src={logo} alt="IT Hub" className="h-10 w-auto" />
+          <img src={logo} alt="IT Hub" className="h-8 w-auto sm:h-10" />
         </Link>
 
         <SearchBox className="hidden max-w-md flex-1 md:block" />
 
         <nav className="ml-auto flex items-center gap-1">
-          <NavLink to="/shop" className={navItemClass}>
-            <Store size={18} />
-            <span className="hidden lg:inline">ร้านค้า</span>
-          </NavLink>
-
-          <NavLink to="/about" className={navItemClass}>
-            <Info size={18} />
-            <span className="hidden lg:inline">เกี่ยวกับเรา</span>
-          </NavLink>
-
-          {user && (
-            <NavLink to="/user/history" className={navItemClass}>
-              <Package size={18} />
-              <span className="hidden lg:inline">คำสั่งซื้อ</span>
-            </NavLink>
+          {/* จอใหญ่: เมนูอยู่ด้านบน / จอเล็ก: ย้ายไปแถบด้านล่าง (เหลือแค่โปรไฟล์) */}
+          {isDesktop && (
+            <>
+              {items.map(({ to, icon: Icon, label, badge }) => (
+                <NavLink key={to} to={to} className={navItemClass}>
+                  <span className="relative">
+                    <Icon size={18} />
+                    {badge > 0 && <CountBadge value={badge} />}
+                  </span>
+                  <span className="hidden lg:inline">{label}</span>
+                </NavLink>
+              ))}
+              {user && <NotificationBell />}
+            </>
           )}
-
-          <NavLink to="/cart" className={navItemClass}>
-            <span className="relative">
-              <ShoppingCart size={18} />
-              {cartCount > 0 && (
-                <span className="absolute -right-2.5 -top-2.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
-                  {cartCount}
-                </span>
-              )}
-            </span>
-            <span className="hidden lg:inline">ตะกร้า</span>
-          </NavLink>
 
           {user ? (
             <DropdownMenu>
@@ -142,6 +201,14 @@ const MainNav = () => {
                 )}
                 <DropdownMenuItem onClick={() => navigate("/user/history")}>
                   <Package /> ประวัติการสั่งซื้อ
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/user/wishlist")}>
+                  <Heart /> รายการโปรด
+                  {wishCount > 0 && (
+                    <span className="ml-auto rounded-full bg-rose-100 px-2 py-0.5 text-xs font-semibold text-rose-600">
+                      {wishCount}
+                    </span>
+                  )}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="destructive" onClick={handleLogout}>
@@ -167,6 +234,13 @@ const MainNav = () => {
         <SearchBox />
       </div>
     </header>
+  );
+
+  return (
+    <>
+      {header}
+      {!isDesktop && <BottomNav items={items} user={user} />}
+    </>
   );
 };
 
