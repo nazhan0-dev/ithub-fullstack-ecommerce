@@ -1,14 +1,7 @@
-import api, { authHeader } from "./client";
+import api from "./client";
 
-export const login = async (form) => {
-  return api.post("/login", form);
-};
-export const registerUser = async (form) => {
-  return api.post("/register", form);
-};
-export const currentUser = async (token) => {
-  return api.post("/current-user", {}, authHeader(token));
-};
-export const currentAdmin = async (token) => {
-  return api.post("/current-admin", {}, authHeader(token));
-};
+export const login = (form) => api.post("/login", form);
+export const logoutUser = () => api.post("/logout");
+export const registerUser = (form) => api.post("/register", form);
+export const currentUser = () => api.post("/current-user");
+export const currentAdmin = () => api.post("/current-admin");

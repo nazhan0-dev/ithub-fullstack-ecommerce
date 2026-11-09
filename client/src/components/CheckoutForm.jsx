@@ -8,7 +8,6 @@ import { saveOrder } from "../api/user";
 import useEcomStore from "../store/ecom-store";
 
 export default function CheckoutForm() {
-  const token = useEcomStore((state) => state.token);
   const clearCart = useEcomStore((state) => state.clearCart);
   const navigate = useNavigate();
 
@@ -34,7 +33,7 @@ export default function CheckoutForm() {
         setMessage(payload.error.message);
         toast.error(payload.error.message);
       } else if (payload.paymentIntent.status === "succeeded") {
-        await saveOrder(token, payload);
+        await saveOrder(payload);
         clearCart();
         toast.success("ชำระเงินสำเร็จ!");
         navigate("/user/history");

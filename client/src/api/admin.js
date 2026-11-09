@@ -1,17 +1,7 @@
-import api, { authHeader } from "./client";
+import api from "./client";
 
-export const getOrdersAdmin = async (token) => {
-  return api.get("/admin/orders", authHeader(token));
-};
-export const changeOrderStatus = async (token, orderId, orderStatus) => {
-  return api.put("/admin/order-status", { orderId, orderStatus }, authHeader(token));
-};
-export const getListAllUsers = async (token) => {
-  return api.get("/users", authHeader(token));
-};
-export const changeUserStatus = async (token, value) => {
-  return api.post("/change-status", value, authHeader(token));
-};
-export const changeUserRole = async (token, value) => {
-  return api.post("/change-role", value, authHeader(token));
-};
+export const getOrdersAdmin = () => api.get("/admin/orders");
+export const changeOrderStatus = (orderId, orderStatus) => api.put("/admin/order-status", { orderId, orderStatus });
+export const getListAllUsers = () => api.get("/users");
+export const changeUserStatus = (value) => api.post("/change-status", value);
+export const changeUserRole = (value) => api.post("/change-role", value);

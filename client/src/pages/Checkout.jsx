@@ -8,7 +8,6 @@ import { priceFormat } from "../utils/number";
 import { Button } from "@/components/ui/button";
 
 const Checkout = () => {
-  const token = useEcomStore((state) => state.token);
   const user = useEcomStore((state) => state.user);
   const navigate = useNavigate();
 
@@ -19,14 +18,14 @@ const Checkout = () => {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!token) return;
-    listUserCart(token)
+    if (!user) return;
+    listUserCart()
       .then((res) => {
         setProducts(res.data.products);
         setCartTotal(res.data.cartTotal);
       })
       .catch((err) => console.log(err));
-  }, [token]);
+  }, [user]);
 
   if (!user) {
     return (
@@ -45,7 +44,7 @@ const Checkout = () => {
     }
     setSaving(true);
     try {
-      const res = await saveAddress(token, address.trim());
+      const res = await saveAddress(address.trim());
       toast.success(res.data.message || "บันทึกที่อยู่เรียบร้อย");
       setAddressSaved(true);
     } catch (err) {

@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ClipboardList, Search } from "lucide-react";
-import useEcomStore from "../../store/ecom-store";
 import { changeOrderStatus, getOrdersAdmin } from "../../api/admin";
 import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
@@ -28,7 +27,6 @@ const StatusSelect = ({ value, onChange, className }) => (
 );
 
 const ManageOrders = () => {
-  const token = useEcomStore((state) => state.token);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState("");
@@ -36,16 +34,16 @@ const ManageOrders = () => {
   const status = params.get("status") || "all";
 
   const loadOrders = () => {
-    getOrdersAdmin(token)
+    getOrdersAdmin()
       .then((res) => setOrders(res.data || []))
       .catch((err) => console.log(err))
       .finally(() => setLoading(false));
   };
 
-  useEffect(loadOrders, [token]);
+  useEffect(loadOrders, []);
 
   const handleChangeStatus = (orderId, next) => {
-    changeOrderStatus(token, orderId, next)
+    changeOrderStatus(orderId, next)
       .then(() => {
         toast.success(`เปลี่ยนสถานะ #${orderId} เป็น "${STATUS_LABELS[next]}"`);
         loadOrders();

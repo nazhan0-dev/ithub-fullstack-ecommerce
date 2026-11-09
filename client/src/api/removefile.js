@@ -1,5 +1,3 @@
-import api, { authHeader } from "./client";
+import api from "./client";
 
-export const removeFiles = async (token, public_id) => {
-  return api.post("/removeimages", { public_id }, authHeader(token));
-};
+export const removeFiles = (public_id) => api.post("/removeimages", { public_id });

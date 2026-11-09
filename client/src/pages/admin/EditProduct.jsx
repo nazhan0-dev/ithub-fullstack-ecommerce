@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import useEcomStore from "../../store/ecom-store";
 import { readProduct, updateProduct } from "../../api/product";
 import ProductForm from "../../components/admin/ProductForm";
 import { emptyProduct } from "../../utils/product";
@@ -11,14 +10,13 @@ import { PageHeader, Panel } from "../../components/admin/AdminUI";
 const EditProduct = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const token = useEcomStore((state) => state.token);
 
   const [form, setForm] = useState(emptyProduct);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    readProduct(token, id)
+    readProduct(id)
       .then((res) =>
         setForm({
           ...emptyProduct,
@@ -32,13 +30,13 @@ const EditProduct = () => {
         toast.error("ไม่พบสินค้า");
       })
       .finally(() => setLoading(false));
-  }, [token, id]);
+  }, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await updateProduct(token, id, form);
+      const res = await updateProduct(id, form);
       toast.success(`แก้ไข ${res.data.title} เรียบร้อย`);
       navigate("/admin/product");
     } catch (error) {

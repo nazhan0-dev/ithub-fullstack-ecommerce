@@ -2,23 +2,21 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package } from "lucide-react";
 import { getOrders } from "../../api/user";
-import useEcomStore from "../../store/ecom-store";
 import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
 import { Button } from "@/components/ui/button";
 import OrderStatusBadge from "../../components/OrderStatusBadge";
 
 const History = () => {
-  const token = useEcomStore((state) => state.token);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    getOrders(token)
+    getOrders()
       .then((res) => setOrders(res.data.orders || []))
       .catch((err) => console.log(err))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   return (
     <div className="mx-auto max-w-4xl space-y-5">

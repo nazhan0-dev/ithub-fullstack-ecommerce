@@ -1,49 +1,104 @@
-# API Endpoints Summary
+# IT Hub API
 
-## Authentication
+REST API ของร้าน IT Hub — Express 5 + MySQL 8 (`mysql2`)
+ทุก endpoint ขึ้นต้นด้วย `http://localhost:8000/api`
 
-| Endpoint                            | Method | Description        | Body                                                 |
-|-------------------------------------|--------|--------------------|------------------------------------------------------|
-| `/api/login`                        | POST   | Login user         | `{ "email": "tam@tam", "password": "1234" }`         |
-| `/api/register`                     | POST   | Register user      | `{ "email": "tam@tam", "password": "1234" }`         |
-| `/api/current-user`                 | POST   | Get current user   | None                                                 |
-| `/api/current-admin`                | POST   | Get current admin  | None                                                 |
+วิธีติดตั้งและตั้งค่าทั้งหมดดูที่ [README หลัก](../README.md)
 
-## Category
+## การยืนยันตัวตน
 
-| Endpoint                            | Method | Description            | Body                        |
-|-------------------------------------|--------|------------------------|-----------------------------|
-| `/api/category`                     | POST   | Create category         | `{ "name": "Test1" }`       |
-| `/api/category`                     | GET    | Get categories          | None                        |
-| `/api/category/:id`                 | DELETE | Delete category by ID   | None                        |
+- `POST /api/login` สำเร็จ → server ส่ง **httpOnly cookie** ชื่อ `token` (JWT อายุ 1 วัน) กลับมา ตัว token **ไม่อยู่ใน response body**
+- request ถัดไปเบราว์เซอร์แนบ cookie ให้อัตโนมัติ — ฝั่งหน้าเว็บต้องตั้ง `withCredentials: true` (axios) หรือ `credentials: "include"` (fetch)
+- `POST /api/logout` ลบ cookie
+- เครื่องมือทดสอบ API (Postman, curl) ส่ง header `Authorization: Bearer <token>` แทน cookie ได้
 
-## Product
+ตัวอย่างด้วย curl (เก็บ cookie ลงไฟล์ `cookies.txt`):
 
-| Endpoint                            | Method | Description            | Body                                                                                  |
-|-------------------------------------|--------|------------------------|---------------------------------------------------------------------------------------|
-| `/api/product`                      | POST   | Create product          | `{ "title": "TEST", "description": "test", "price": 10000, "quantity": 20, "categoryId": 2, "images": [] }` |
-| `/api/product/:id`                  | GET    | Get product by ID       | None                                                                                  |
-| `/api/product/:id`                  | DELETE | Delete product by ID    | None                                                                                  |
-| `/api/productby`                    | POST   | Get products by filters | `{ "sort": "price", "order": "asc", "limit": 2 }` or `{ "sort": "quantity", "order": "desc", "limit": 2 }` |
-| `/api/search/filters`               | POST   | Search with filters     | `{ "query": "mouse" }`, `{ "price": [100, 600] }`, or `{ "category": [1, 2] }`        |
+```bash
+curl -c cookies.txt -H "Content-Type: application/json" \
+     -d '{"email":"admin@ithub.com","password":"Admin@1234"}' \
+     http://localhost:8000/api/login
 
-## User Management
+curl -b cookies.txt http://localhost:8000/api/users
+```
 
-| Endpoint                            | Method | Description               | Body                                                       |
-|-------------------------------------|--------|---------------------------|------------------------------------------------------------|
-| `/api/users`                        | GET    | Get all users             | None                                                       |
-| `/api/change-status`                | POST   | Change user status        | `{ "id": 1, "enabled": false }`                            |
-| `/api/change-role`                  | POST   | Change user role          | `{ "id": 1, "role": "user" }`                              |
-| `/api/user/cart`                    | POST   | Add to cart               | `{ "cart": [{ "id": 1, "count": 2, "price": 100 }, { "id": 5, "count": 1, "price": 200 }] }` |
-| `/api/user/cart`                    | GET    | Get cart                  | None                                                       |
-| `/api/user/cart`                    | DELETE | Delete cart               | None                                                       |
-| `/api/user/address`                 | POST   | Add user address          | `{ "address": "korat" }`                                   |
-| `/api/user/order`                   | POST   | Place an order            | None                                                       |
-| `/api/user/order`                   | GET    | Get user orders           | None                                                       |
+## สิทธิ์การเข้าถึง
 
-## Admin
+| สัญลักษณ์ | ความหมาย | ถ้าไม่ผ่าน |
+|---|---|---|
+| 🌐 สาธารณะ | ไม่ต้อง login | — |
+| 👤 สมาชิก | ต้อง login และบัญชีไม่ถูกระงับ | `401` ไม่ได้ login · `403` บัญชีถูกระงับ |
+| 🛡️ Admin | ต้อง login และ `role = admin` | `403` |
 
-| Endpoint                            | Method | Description               | Body                              |
-|-------------------------------------|--------|---------------------------|-----------------------------------|
-| `/api/user/order`                   | PUT    | Update order status        | `{ "orderId": 35, "orderStatus": "Completed" }` |
-| `/api/admin/orders`                 | GET    | Get all orders             | None                              |
+request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้องมาจากหน้าเว็บที่อยู่ใน `CLIENT_URL` เท่านั้น (กัน CSRF) — ไม่อย่างนั้นได้ `403 Origin not allowed`
+
+## Endpoints
+
+### บัญชีผู้ใช้
+
+| Method | Endpoint | สิทธิ์ | Body | ผลลัพธ์ |
+|---|---|---|---|---|
+| POST | `/register` | 🌐 | `{ "email", "password" }` | `"Register Success"` |
+| POST | `/login` | 🌐 | `{ "email", "password" }` | `{ payload: { id, email, role } }` + cookie |
+| POST | `/logout` | 🌐 | — | ลบ cookie |
+| POST | `/current-user` | 👤 | — | `{ user }` |
+| POST | `/current-admin` | 🛡️ | — | `{ user }` |
+
+### หมวดหมู่
+
+| Method | Endpoint | สิทธิ์ | Body |
+|---|---|---|---|
+| GET | `/category` | 🌐 | — |
+| POST | `/category` | 🛡️ | `{ "name": "Monitor" }` |
+| DELETE | `/category/:id` | 🛡️ | — (สินค้าในหมวดนี้จะไม่มีหมวดหมู่) |
+
+### สินค้า
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| GET | `/products/:count` | 🌐 | สินค้าล่าสุด `count` รายการ พร้อม `category` และ `images` |
+| GET | `/product/:id` | 🌐 | `404` ถ้าไม่พบ |
+| POST | `/productby` | 🌐 | `{ "sort": "sold", "order": "desc", "limit": 12 }` — `sort`: `id` `title` `price` `sold` `quantity` `createdAt` `updatedAt` |
+| POST | `/search/filters` | 🌐 | `{ "query": "mouse", "category": [1, 2], "price": [100, 5000] }` — ใส่ช่องเดียวหรือหลายช่องพร้อมกันได้ |
+| POST | `/product` | 🛡️ | `{ "title", "description", "price", "quantity", "categoryId", "images": [] }` |
+| PUT | `/product/:id` | 🛡️ | เหมือน POST — `images` จะแทนที่รูปเดิมทั้งหมด |
+| DELETE | `/product/:id` | 🛡️ | ลบไม่ได้ถ้าสินค้าอยู่ในตะกร้าหรือคำสั่งซื้อแล้ว (`400`) |
+| POST | `/images` | 🛡️ | `{ "image": "<base64>" }` อัปโหลดขึ้น Cloudinary |
+| POST | `/removeimages` | 🛡️ | `{ "public_id" }` ลบรูปจาก Cloudinary |
+
+### ตะกร้าและคำสั่งซื้อ (ลูกค้า)
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| POST | `/user/cart` | 👤 | `{ "cart": [{ "id": 1, "count": 2 }] }` — ราคาใช้จากฐานข้อมูลเสมอ, เกินสต็อกได้ `400` |
+| GET | `/user/cart` | 👤 | `{ products, cartTotal }` |
+| DELETE | `/user/cart` | 👤 | ล้างตะกร้า |
+| POST | `/user/address` | 👤 | `{ "address": "..." }` |
+| POST | `/user/create-payment-intent` | 👤 | สร้างการชำระเงินจากยอดตะกร้า → `{ clientSecret }` |
+| POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยใช้ |
+| GET | `/user/order` | 👤 | `{ ok, orders }` — ยังไม่มีคำสั่งซื้อได้ `orders: []` |
+
+### ผู้ดูแลระบบ
+
+| Method | Endpoint | สิทธิ์ | Body |
+|---|---|---|---|
+| GET | `/admin/orders` | 🛡️ | คำสั่งซื้อทั้งหมด พร้อมลูกค้าและรายการสินค้า |
+| PUT | `/admin/order-status` | 🛡️ | `{ "orderId": 1, "orderStatus": "Completed" }` — `Not Process` · `Processing` · `Completed` · `Cancelled` |
+| GET | `/users` | 🛡️ | — |
+| POST | `/change-status` | 🛡️ | `{ "id": 1, "enabled": false }` |
+| POST | `/change-role` | 🛡️ | `{ "id": 1, "role": "admin" }` — `user` · `admin` |
+
+## รูปแบบ error
+
+```json
+{ "message": "ข้อความอธิบาย" }
+```
+
+| Status | ความหมาย |
+|---|---|
+| `400` | ข้อมูลไม่ถูกต้อง (เช่น สินค้าหมด, การชำระเงินไม่ผ่าน) |
+| `401` | ไม่ได้ login หรือ token หมดอายุ |
+| `403` | ไม่มีสิทธิ์ / บัญชีถูกระงับ / Origin ไม่ได้รับอนุญาต |
+| `404` | ไม่พบข้อมูล |
+| `409` | ของหมดระหว่างชำระเงิน (คืนเงินอัตโนมัติ) |
+| `500` | ข้อผิดพลาดฝั่ง server |

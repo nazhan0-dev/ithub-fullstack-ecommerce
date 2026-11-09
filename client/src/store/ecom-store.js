@@ -1,24 +1,27 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { login } from "../api/auth";
+import { login, logoutUser } from "../api/auth";
+import { setUnauthorizedHandler } from "../api/client";
 import { listCategory } from "../api/category";
 import { listProduct, searchFilters } from "../api/product";
 
 const ecomStore = (set, get) => ({
+  // token อยู่ใน httpOnly cookie (JavaScript อ่านไม่ได้) — เก็บแค่ข้อมูลผู้ใช้ไว้แสดงผล
   user: null,
-  token: null,
   categories: [],
   products: [],
   carts: [],
 
-  logout: () => {
-    set({
-      user: null,
-      token: null,
-      products: [],
-      carts: [],
-    });
+  logout: async () => {
+    try {
+      await logoutUser(); // ให้ server ลบ cookie
+    } catch (error) {
+      console.log(error);
+    }
+    get().clearSession();
   },
+  // ล้างสถานะ login ฝั่งหน้าเว็บ (ใช้ตอน logout และตอน cookie หมดอายุ)
+  clearSession: () => set({ user: null, carts: [] }),
   actionAddtoCart: (product) => {
     const carts = get().carts;
     const exists = carts.find((item) => item.id === product.id);
@@ -54,10 +57,7 @@ const ecomStore = (set, get) => ({
   },
   actionLogin: async (form) => {
     const res = await login(form);
-    set({
-      user: res.data.payload,
-      token: res.data.token,
-    });
+    set({ user: res.data.payload });
     return res;
   },
   getCategory: async () => {
@@ -93,10 +93,17 @@ const usePersist = {
   // เก็บเฉพาะข้อมูลที่ต้องจำข้ามการรีเฟรช
   partialize: (state) => ({
     user: state.user,
-    token: state.token,
     carts: state.carts,
   }),
+  // version 1: เลิกเก็บ token ใน localStorage (ลบของเก่าทิ้ง)
+  version: 1,
+  migrate: (persisted) => ({ user: persisted?.user ?? null, carts: persisted?.carts ?? [] }),
 };
 const useEcomStore = create(persist(ecomStore, usePersist));
+
+// server ตอบ 401 = ไม่ได้ login แล้ว (cookie หมดอายุ) -> ล้างข้อมูลผู้ใช้
+setUnauthorizedHandler(() => {
+  if (useEcomStore.getState().user) useEcomStore.getState().clearSession();
+});
 
 export default useEcomStore;

@@ -26,7 +26,6 @@ const StockPill = ({ qty }) => (
 );
 
 const Product = () => {
-  const token = useEcomStore((state) => state.token);
   const getProduct = useEcomStore((state) => state.getProduct);
   const products = useEcomStore((state) => state.products);
   const categories = useEcomStore((state) => state.categories);
@@ -48,7 +47,7 @@ const Product = () => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await createProduct(token, form);
+      const res = await createProduct(form);
       toast.success(`เพิ่มสินค้า ${res.data.title} เรียบร้อย`);
       setForm(emptyProduct);
       setShowForm(false);
@@ -73,7 +72,7 @@ const Product = () => {
     });
     if (!result.isConfirmed) return;
     try {
-      await deleteProduct(token, item.id);
+      await deleteProduct(item.id);
       toast.success("ลบสินค้าเรียบร้อย");
       getProduct(100);
     } catch (error) {

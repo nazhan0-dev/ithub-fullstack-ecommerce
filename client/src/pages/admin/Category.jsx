@@ -8,7 +8,6 @@ import { PageHeader, Panel, inputClass } from "../../components/admin/AdminUI";
 import { Button } from "@/components/ui/button";
 
 const Category = () => {
-  const token = useEcomStore((state) => state.token);
   const categories = useEcomStore((state) => state.categories);
   const getCategory = useEcomStore((state) => state.getCategory);
   const [name, setName] = useState("");
@@ -23,7 +22,7 @@ const Category = () => {
     if (!name.trim()) return toast.warning("กรุณากรอกชื่อหมวดหมู่");
     setSaving(true);
     try {
-      const res = await createCategory(token, { name: name.trim() });
+      const res = await createCategory({ name: name.trim() });
       toast.success(`เพิ่มหมวดหมู่ ${res.data.name} เรียบร้อย`);
       setName("");
       getCategory();
@@ -46,7 +45,7 @@ const Category = () => {
     });
     if (!result.isConfirmed) return;
     try {
-      await removeCategory(token, item.id);
+      await removeCategory(item.id);
       toast.success(`ลบ ${item.name} เรียบร้อย`);
       getCategory();
     } catch (error) {

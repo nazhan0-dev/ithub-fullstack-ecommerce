@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { loadStripe } from "@stripe/stripe-js";
 import { Elements } from "@stripe/react-stripe-js";
 import { CreditCard } from "lucide-react";
-import useEcomStore from "../../store/ecom-store";
 import { payment } from "../../api/stripe";
 import CheckoutForm from "../../components/CheckoutForm";
 
@@ -21,18 +20,17 @@ const appearance = {
 };
 
 const Payment = () => {
-  const token = useEcomStore((state) => state.token);
   const [clientSecret, setClientSecret] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    payment(token)
+    payment()
       .then((res) => setClientSecret(res.data.clientSecret))
       .catch((err) => {
         console.log(err);
         setError("ไม่สามารถเริ่มการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
       });
-  }, [token]);
+  }, []);
 
   return (
     <div className="mx-auto max-w-lg space-y-5">

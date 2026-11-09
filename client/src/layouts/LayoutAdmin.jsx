@@ -2,21 +2,19 @@ import { useEffect, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 import SidebarAdmin from "../components/admin/SidebarAdmin";
 import HeaderAdmin from "../components/admin/HeaderAdmin";
-import useEcomStore from "../store/ecom-store";
 import { getOrdersAdmin } from "../api/admin";
 
 const LayoutAdmin = () => {
-  const token = useEcomStore((state) => state.token);
   const { pathname } = useLocation();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(0);
 
   // จำนวนคำสั่งซื้อที่รอดำเนินการ (อัปเดตทุกครั้งที่เปลี่ยนหน้า)
   useEffect(() => {
-    getOrdersAdmin(token)
+    getOrdersAdmin()
       .then((res) => setPending((res.data || []).filter((o) => o.orderStatus === "Not Process").length))
       .catch(() => {});
-  }, [token, pathname]);
+  }, [pathname]);
 
   return (
     <div className="flex h-screen bg-background">

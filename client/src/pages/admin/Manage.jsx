@@ -7,22 +7,21 @@ import { cn } from "@/lib/utils";
 import { Search } from "lucide-react";
 
 const Manage = () => {
-  const token = useEcomStore((state) => state.token);
   const currentUser = useEcomStore((state) => state.user);
   const [users, setUsers] = useState([]);
   const [keyword, setKeyword] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
 
   const loadUsers = () => {
-    getListAllUsers(token)
+    getListAllUsers()
       .then((res) => setUsers(res.data))
       .catch((err) => console.log(err));
   };
 
-  useEffect(loadUsers, [token]);
+  useEffect(loadUsers, []);
 
   const handleStatus = (user) => {
-    changeUserStatus(token, { id: user.id, enabled: !user.enabled })
+    changeUserStatus({ id: user.id, enabled: !user.enabled })
       .then(() => {
         toast.success("อัปเดตสถานะเรียบร้อย");
         loadUsers();
@@ -31,7 +30,7 @@ const Manage = () => {
   };
 
   const handleRole = (user, role) => {
-    changeUserRole(token, { id: user.id, role })
+    changeUserRole({ id: user.id, role })
       .then(() => {
         toast.success("อัปเดตสิทธิ์เรียบร้อย");
         loadUsers();

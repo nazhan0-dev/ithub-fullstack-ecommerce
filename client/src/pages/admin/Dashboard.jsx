@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import moment from "moment";
 import { ClipboardList, Package, TrendingDown, TrendingUp, Users, Wallet } from "lucide-react";
-import useEcomStore from "../../store/ecom-store";
 import { getListAllUsers, getOrdersAdmin } from "../../api/admin";
 import { listProduct } from "../../api/product";
 import { numberFormat, priceFormat } from "../../utils/number";
@@ -49,7 +48,6 @@ const StatCard = ({ label, value, icon: Icon, trend, hint }) => (
 );
 
 const Dashboard = () => {
-  const token = useEcomStore((state) => state.token);
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -58,11 +56,11 @@ const Dashboard = () => {
 
   useEffect(() => {
     Promise.allSettled([
-      getOrdersAdmin(token).then((res) => setOrders(res.data || [])),
-      getListAllUsers(token).then((res) => setUsers(res.data || [])),
+      getOrdersAdmin().then((res) => setOrders(res.data || [])),
+      getListAllUsers().then((res) => setUsers(res.data || [])),
       listProduct(1000).then((res) => setProducts(res.data || [])),
     ]).finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   // เทียบช่วงเวลาปัจจุบันกับช่วงก่อนหน้าที่ยาวเท่ากัน
   const now = moment();

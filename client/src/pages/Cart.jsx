@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 const Cart = () => {
   const carts = useEcomStore((state) => state.carts);
   const user = useEcomStore((state) => state.user);
-  const token = useEcomStore((state) => state.token);
   const getTotalPrice = useEcomStore((state) => state.getTotalPrice);
   const actionUpdateQuantity = useEcomStore((state) => state.actionUpdateQuantity);
   const actionRemoveProduct = useEcomStore((state) => state.actionRemoveProduct);
@@ -22,7 +21,7 @@ const Cart = () => {
   const handleSaveCart = async () => {
     setSaving(true);
     try {
-      await createUserCart(token, { cart: carts });
+      await createUserCart({ cart: carts });
       navigate("/checkout");
     } catch (err) {
       console.log(err);

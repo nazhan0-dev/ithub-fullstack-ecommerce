@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { query, one } = require('../config/db')
+const { setAuthCookie, clearAuthCookie } = require('../config/authCookie')
 
 exports.register = async (req, res) => {
     try {
@@ -48,7 +49,9 @@ exports.login = async (req, res) => {
             if (error) {
                 return res.status(500).json({ message: 'Server Error' })
             }
-            res.json({ payload, token })
+            // เก็บ token ใน httpOnly cookie (ไม่ส่ง token กลับใน body)
+            setAuthCookie(res, token)
+            res.json({ payload })
         })
     } catch (error) {
         console.log(error)
@@ -64,4 +67,9 @@ exports.currentUser = async (req, res) => {
         console.log(error)
         res.status(500).json({ message: 'Server Error' })
     }
+}
+
+exports.logout = (req, res) => {
+    clearAuthCookie(res)
+    res.json({ message: 'Logout Success' })
 }

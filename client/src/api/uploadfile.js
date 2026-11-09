@@ -1,5 +1,3 @@
-import api, { authHeader } from "./client";
+import api from "./client";
 
-export const uploadFiles = async (token, image) => {
-  return api.post("/images", { image }, authHeader(token));
-};
+export const uploadFiles = (image) => api.post("/images", { image });

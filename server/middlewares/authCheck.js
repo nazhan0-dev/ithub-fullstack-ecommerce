@@ -1,15 +1,16 @@
 const jwt = require('jsonwebtoken')
 const { one } = require('../config/db')
+const { COOKIE_NAME } = require('../config/authCookie')
 
 // ตรวจ token และสถานะบัญชี
 exports.authCheck = async (req, res, next) => {
     try {
-        const headerToken = req.headers.authorization
-        if (!headerToken) {
+        // อ่าน token จาก httpOnly cookie (รองรับ header "Authorization: Bearer" สำหรับเครื่องมือทดสอบ API ด้วย)
+        const header = req.headers.authorization
+        const token = req.cookies?.[COOKIE_NAME] || (header?.startsWith('Bearer ') ? header.slice(7) : null)
+        if (!token) {
             return res.status(401).json({ message: 'No Token, Authorization' })
         }
-
-        const token = headerToken.split(' ')[1]
         let decode
         try {
             decode = jwt.verify(token, process.env.SECRET)

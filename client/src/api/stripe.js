@@ -1,5 +1,3 @@
-import api, { authHeader } from "./client";
+import api from "./client";
 
-export const payment = async (token) => {
-  return api.post("/user/create-payment-intent", {}, authHeader(token));
-};
+export const payment = () => api.post("/user/create-payment-intent");

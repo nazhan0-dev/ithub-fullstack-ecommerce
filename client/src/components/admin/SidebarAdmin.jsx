@@ -18,8 +18,8 @@ const SidebarAdmin = ({ open, onClose, pending = 0 }) => {
   const user = useEcomStore((state) => state.user);
   const navigate = useNavigate();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 

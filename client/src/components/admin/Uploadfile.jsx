@@ -4,7 +4,6 @@ import Resizer from "react-image-file-resizer";
 import { ImagePlus, Loader2, X } from "lucide-react";
 import { uploadFiles } from "../../api/uploadfile";
 import { removeFiles } from "../../api/removefile";
-import useEcomStore from "../../store/ecom-store";
 
 // react-image-file-resizer เป็น CJS -> บางครั้งอยู่ใน .default
 const resizer = Resizer.default || Resizer;
@@ -15,7 +14,6 @@ const resizeImage = (file) =>
   });
 
 const Uploadfile = ({ form, setForm }) => {
-  const token = useEcomStore((state) => state.token);
   const [uploading, setUploading] = useState(0);
 
   const handleOnChange = async (e) => {
@@ -35,7 +33,7 @@ const Uploadfile = ({ form, setForm }) => {
       images.map(async (file) => {
         try {
           const data = await resizeImage(file);
-          const res = await uploadFiles(token, data);
+          const res = await uploadFiles(data);
           // ใช้ functional update เพื่อไม่ให้รูปที่อัปโหลดพร้อมกันทับกัน
           setForm((prev) => ({ ...prev, images: [...prev.images, res.data] }));
         } catch (err) {
@@ -50,7 +48,7 @@ const Uploadfile = ({ form, setForm }) => {
   };
 
   const handleDelete = (public_id) => {
-    removeFiles(token, public_id)
+    removeFiles(public_id)
       .then(() => {
         setForm((prev) => ({
           ...prev,
