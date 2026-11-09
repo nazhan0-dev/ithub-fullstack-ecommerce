@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { Check, ClipboardCheck, Package, PackageCheck, Truck, XCircle } from "lucide-react";
+import { Check, ClipboardCheck, Loader2, Package, PackageCheck, Truck, XCircle } from "lucide-react";
 import { AnimatePresence, MotionConfig, animate, motion } from "motion/react";
-import { getOrders } from "../../api/user";
+import { toast } from "react-toastify";
+import Swal from "sweetalert2";
+import { cancelOrder, getOrders } from "../../api/user";
 import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
 import { Button } from "@/components/ui/button";
@@ -44,7 +46,7 @@ const CountUp = ({ value }) => {
   return priceFormat(shown);
 };
 
-const OrderProgress = ({ status, updatedAt }) => {
+const OrderProgress = ({ status, updatedAt, refunded }) => {
   if (status === "Cancelled") {
     return (
       <motion.div
@@ -55,7 +57,8 @@ const OrderProgress = ({ status, updatedAt }) => {
       >
         <XCircle size={18} className="shrink-0" />
         <span>
-          คำสั่งซื้อนี้ถูกยกเลิก <span className="text-red-600/70">· {dateFormat(updatedAt)}</span>
+          คำสั่งซื้อนี้ถูกยกเลิก{refunded && " · คืนเงินเต็มจำนวนแล้ว"}{" "}
+          <span className="text-red-600/70">· {dateFormat(updatedAt)}</span>
         </span>
       </motion.div>
     );
@@ -130,7 +133,7 @@ const OrderProgress = ({ status, updatedAt }) => {
 };
 
 // ref: AnimatePresence (popLayout) ต้องเข้าถึง DOM ของการ์ด — React 19 ส่ง ref มาเป็น prop ได้เลย
-const OrderCard = ({ order, index, ref }) => (
+const OrderCard = ({ order, index, ref, onCancel, cancelling }) => (
   <motion.article
     ref={ref}
     layout
@@ -150,7 +153,7 @@ const OrderCard = ({ order, index, ref }) => (
     </header>
 
     <div className="border-b px-5 py-4">
-      <OrderProgress status={order.orderStatus} updatedAt={order.updatedAt} />
+      <OrderProgress status={order.orderStatus} updatedAt={order.updatedAt} refunded={order.status === "refunded"} />
     </div>
 
     <div className="divide-y px-5">
@@ -175,11 +178,25 @@ const OrderCard = ({ order, index, ref }) => (
       ))}
     </div>
 
-    <footer className="flex items-center justify-between border-t px-5 py-4">
-      <span className="text-sm text-muted-foreground">รวมสุทธิ</span>
-      <span className="text-lg font-extrabold tabular-nums text-primary">
-        <CountUp value={order.cartTotal} />
-      </span>
+    <footer className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4">
+      <div className="flex items-baseline gap-3">
+        <span className="text-sm text-muted-foreground">รวมสุทธิ</span>
+        <span className="text-lg font-extrabold tabular-nums text-primary">
+          <CountUp value={order.cartTotal} />
+        </span>
+      </div>
+      {/* ยกเลิกได้เฉพาะตอนร้านยังไม่เริ่มดำเนินการ */}
+      {order.orderStatus === "Not Process" && (
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => onCancel(order)}
+          disabled={cancelling}
+          className="inline-flex items-center gap-1.5 rounded-full border border-red-200 px-4 py-1.5 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-60"
+        >
+          {cancelling ? <Loader2 size={15} className="animate-spin" /> : <XCircle size={15} />}
+          {cancelling ? "กำลังยกเลิก..." : "ยกเลิกคำสั่งซื้อ"}
+        </motion.button>
+      )}
     </footer>
   </motion.article>
 );
@@ -188,6 +205,31 @@ const History = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
+  const [cancellingId, setCancellingId] = useState(null);
+
+  const handleCancel = async (order) => {
+    const confirm = await Swal.fire({
+      title: `ยกเลิกคำสั่งซื้อ #${orderCode(order.id)}?`,
+      html: `ระบบจะคืนเงิน <b>${priceFormat(order.cartTotal)}</b> เข้าบัตรที่ใช้ชำระ<br/><small>(ใช้เวลา 5–10 วันทำการตามธนาคาร)</small>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#dc2626",
+      confirmButtonText: "ยกเลิกคำสั่งซื้อ",
+      cancelButtonText: "ไม่ยกเลิก",
+      reverseButtons: true,
+    });
+    if (!confirm.isConfirmed) return;
+    setCancellingId(order.id);
+    try {
+      const res = await cancelOrder(order.id);
+      setOrders((list) => list.map((o) => (o.id === order.id ? { ...o, ...res.data.order } : o)));
+      toast.success("ยกเลิกคำสั่งซื้อแล้ว กำลังคืนเงิน");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "ยกเลิกคำสั่งซื้อไม่สำเร็จ");
+    } finally {
+      setCancellingId(null);
+    }
+  };
 
   useEffect(() => {
     getOrders()
@@ -283,7 +325,13 @@ const History = () => {
             {/* popLayout: การ์ดที่ถูกกรองออกหายไป แล้วการ์ดที่เหลือเลื่อนขึ้นมาแทนที่ */}
             <AnimatePresence mode="popLayout" initial={true}>
               {shown.map((order, i) => (
-                <OrderCard key={order.id} order={order} index={i} />
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  index={i}
+                  onCancel={handleCancel}
+                  cancelling={cancellingId === order.id}
+                />
               ))}
               {shown.length === 0 && (
                 <motion.p

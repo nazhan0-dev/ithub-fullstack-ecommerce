@@ -10,8 +10,10 @@ exports.changeOrderStatus = async (req, res) => {
             return res.status(400).json({ message: 'Invalid order status' })
         }
         const orderUpdate = await transaction(async (conn) => {
-            const before = await one('SELECT orderStatus FROM `order` WHERE id = ? FOR UPDATE', [Number(orderId)], conn)
+            const before = await one('SELECT orderStatus, status FROM `order` WHERE id = ? FOR UPDATE', [Number(orderId)], conn)
             if (!before) return null
+            // ลูกค้ายกเลิกและได้เงินคืนแล้ว -> เปลี่ยนสถานะไม่ได้ (สต็อกถูกคืนไปแล้ว)
+            if (before.status === 'refunded' && orderStatus !== 'Cancelled') return { refunded: true }
             await query(
                 'UPDATE `order` SET orderStatus = ?, updatedAt = UTC_TIMESTAMP(3) WHERE id = ?',
                 [orderStatus, Number(orderId)],
@@ -24,6 +26,9 @@ exports.changeOrderStatus = async (req, res) => {
         })
         if (!orderUpdate) {
             return res.status(404).json({ message: 'Order not found' })
+        }
+        if (orderUpdate.refunded) {
+            return res.status(400).json({ message: 'คำสั่งซื้อนี้ยกเลิกและคืนเงินแล้ว เปลี่ยนสถานะไม่ได้' })
         }
         res.json(orderUpdate)
     } catch (error) {

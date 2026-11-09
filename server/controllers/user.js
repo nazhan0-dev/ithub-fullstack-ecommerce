@@ -237,3 +237,58 @@ exports.getOrder = async (req, res) => {
         res.status(500).json({ message: 'Server Error' })
     }
 }
+
+// POST /user/order/:id/cancel — ลูกค้ายกเลิกคำสั่งซื้อเอง (เฉพาะสถานะ "รอดำเนินการ")
+// คืนสต็อก + ลดยอดขาย + คืนเงินผ่าน Stripe ในชุดเดียว: คืนเงินไม่สำเร็จ = ไม่ยกเลิก
+exports.cancelOrder = async (req, res) => {
+    try {
+        const orderId = Number(req.params.id)
+        const userId = Number(req.user.id)
+        const result = await transaction(async (conn) => {
+            // FOR UPDATE: กันลูกค้ากดซ้ำ / admin เปลี่ยนสถานะพร้อมกัน
+            const order = await one(
+                'SELECT * FROM `order` WHERE id = ? AND orderedById = ? FOR UPDATE',
+                [orderId, userId],
+                conn
+            )
+            if (!order) return { error: 404, message: 'ไม่พบคำสั่งซื้อ' }
+            if (order.orderStatus !== 'Not Process') {
+                return { error: 400, message: 'ยกเลิกได้เฉพาะคำสั่งซื้อที่ยังรอดำเนินการ' }
+            }
+
+            const items = await query('SELECT productId, count FROM productonorder WHERE orderId = ?', [orderId], conn)
+            for (const i of items) {
+                await query(
+                    `UPDATE product SET quantity = quantity + ?, sold = GREATEST(sold - ?, 0), updatedAt = UTC_TIMESTAMP(3)
+                     WHERE id = ?`,
+                    [i.count, i.count, i.productId],
+                    conn
+                )
+            }
+            await query(
+                "UPDATE `order` SET orderStatus = 'Cancelled', status = 'refunded', updatedAt = UTC_TIMESTAMP(3) WHERE id = ?",
+                [orderId],
+                conn
+            )
+
+            // คืนเงินเป็นขั้นสุดท้าย — ถ้า Stripe ไม่ผ่าน จะ throw แล้วย้อนกลับทุกอย่างด้านบน
+            // idempotencyKey: กดซ้ำ/ส่งซ้ำ Stripe จะไม่คืนเงินสองครั้ง
+            await stripe.refunds.create(
+                { payment_intent: order.stripePayment },
+                { idempotencyKey: `cancel-order-${orderId}` }
+            )
+            return { order: await one('SELECT * FROM `order` WHERE id = ?', [orderId], conn) }
+        })
+
+        if (result.error) {
+            return res.status(result.error).json({ ok: false, message: result.message })
+        }
+        res.json({ ok: true, order: result.order })
+    } catch (error) {
+        console.log(error)
+        if (error.type?.startsWith?.('Stripe')) {
+            return res.status(502).json({ ok: false, message: 'คืนเงินไม่สำเร็จ กรุณาลองใหม่หรือติดต่อร้าน' })
+        }
+        res.status(500).json({ message: 'Server Error' })
+    }
+}

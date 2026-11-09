@@ -78,6 +78,7 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | POST | `/user/create-payment-intent` | 👤 | สร้างการชำระเงินจากยอดตะกร้า → `{ clientSecret }` |
 | POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยใช้ |
 | GET | `/user/order` | 👤 | `{ ok, orders }` — ยังไม่มีคำสั่งซื้อได้ `orders: []` |
+| POST | `/user/order/:id/cancel` | 👤 | ยกเลิกคำสั่งซื้อของตัวเอง (เฉพาะ `Not Process`) → คืนสต็อก + คืนเงินผ่าน Stripe, `status` = `refunded` — สถานะอื่นได้ `400`, ไม่ใช่ของตัวเองได้ `404`, Stripe ไม่ผ่านได้ `502` (ไม่ยกเลิก) |
 
 ### แจ้งเตือน (ลูกค้า)
 

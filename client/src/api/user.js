@@ -16,3 +16,4 @@ export const setRestockAlert = (productId, subscribe) =>
 // รายการโปรด (กดหัวใจ)
 export const getWishlist = () => api.get("/user/wishlist");
 export const setWishlist = (productId, liked) => api.post("/user/wishlist/" + productId, { liked });
+export const cancelOrder = (orderId) => api.post(`/user/order/${orderId}/cancel`);

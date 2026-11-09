@@ -11,7 +11,8 @@ const  {listUsers ,
        emptyCart ,
        saveAddress ,
        saveOrder,
-       getOrder} = require('../controllers/user')
+       getOrder,
+       cancelOrder} = require('../controllers/user')
 const { listNotifications,
         readNotifications,
         getRestockAlert,
@@ -31,6 +32,7 @@ router.post('/user/address',authCheck,saveAddress)
 
 router.post('/user/order',authCheck,saveOrder)
 router.get('/user/order',authCheck,getOrder)
+router.post('/user/order/:id/cancel',authCheck,cancelOrder)
 
 // แจ้งเตือน
 router.get('/user/notifications',authCheck,listNotifications)

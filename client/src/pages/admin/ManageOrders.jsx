@@ -10,7 +10,11 @@ import OrderStatusBadge from "../../components/OrderStatusBadge";
 import { ORDER_STATUSES, STATUS_LABELS, orderCode, parseOrderCode } from "../../utils/orderStatus";
 import { cn } from "@/lib/utils";
 
-const StatusSelect = ({ value, onChange, className }) => (
+// ลูกค้ายกเลิกและได้เงินคืนแล้ว -> เปลี่ยนสถานะไม่ได้
+const StatusSelect = ({ value, onChange, className, refunded }) =>
+  refunded ? (
+    <span className="text-xs font-medium text-red-600">ลูกค้ายกเลิก · คืนเงินแล้ว</span>
+  ) : (
   <select
     value={value}
     onChange={(e) => onChange(e.target.value)}
@@ -24,7 +28,7 @@ const StatusSelect = ({ value, onChange, className }) => (
       <option key={s} value={s}>{STATUS_LABELS[s]}</option>
     ))}
   </select>
-);
+  );
 
 const ManageOrders = () => {
   const [orders, setOrders] = useState([]);
@@ -132,7 +136,7 @@ const ManageOrders = () => {
               )}
               <div className="flex items-center justify-between gap-3">
                 <span className="font-bold">{priceFormat(item.cartTotal)}</span>
-                <StatusSelect value={item.orderStatus} onChange={(v) => handleChangeStatus(item.id, v)} />
+                <StatusSelect value={item.orderStatus} refunded={item.status === "refunded"} onChange={(v) => handleChangeStatus(item.id, v)} />
               </div>
             </li>
           ))}
@@ -183,6 +187,7 @@ const ManageOrders = () => {
                       <OrderStatusBadge status={item.orderStatus} />
                       <StatusSelect
                         value={item.orderStatus}
+                        refunded={item.status === "refunded"}
                         onChange={(v) => handleChangeStatus(item.id, v)}
                         className="py-1 text-xs"
                       />
