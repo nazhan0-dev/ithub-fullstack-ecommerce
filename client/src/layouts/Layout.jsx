@@ -1,9 +1,11 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, ScrollRestoration } from "react-router-dom";
 import MainNav from "../components/MainNav";
 
 const Layout = () => {
   return (
     <div className="flex min-h-screen flex-col bg-background">
+      {/* เปลี่ยนหน้าแล้วเลื่อนขึ้นบนสุด (กดย้อนกลับจะกลับไปตำแหน่งเดิม) */}
+      <ScrollRestoration />
       <MainNav />
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
         <Outlet />

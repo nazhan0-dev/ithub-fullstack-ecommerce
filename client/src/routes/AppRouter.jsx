@@ -3,6 +3,7 @@ import { createBrowserRouter, Link, Navigate, RouterProvider } from "react-route
 import { Loader2 } from "lucide-react";
 import Home from "../pages/Home";
 import Shop from "../pages/Shop";
+import ProductDetail from "../pages/ProductDetail";
 import About from "../pages/About";
 import Cart from "../pages/Cart";
 import Checkout from "../pages/Checkout";
@@ -53,6 +54,7 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <Home /> },
       { path: "shop", element: <Shop /> },
+      { path: "product/:id", element: <ProductDetail /> },
       { path: "about", element: <About /> },
       { path: "cart", element: <Cart /> },
       { path: "checkout", element: <Checkout /> },

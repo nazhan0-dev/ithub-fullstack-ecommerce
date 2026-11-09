@@ -1,5 +1,6 @@
 import { ShoppingCart, ImageOff } from "lucide-react";
 import { motion } from "motion/react";
+import { Link } from "react-router-dom";
 import { toast } from "react-toastify";
 import useEcomStore from "../../store/ecom-store";
 import { priceFormat } from "../../utils/number";
@@ -22,7 +23,7 @@ const ProductCard = ({ item, className }) => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25 }}
       className={cn(
-        "group flex h-full flex-col rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-lg",
+        "group relative flex h-full flex-col rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-lg",
         className,
       )}
     >
@@ -56,9 +57,14 @@ const ProductCard = ({ item, className }) => {
 
       {/* ข้อมูลสินค้า */}
       <div className="flex flex-1 flex-col items-center px-1 pt-3 text-center">
-        <p className="w-full truncate font-semibold" title={item.title}>
+        {/* ลิงก์คลุมทั้งการ์ด: กดตรงไหนก็ไปหน้ารายละเอียด ยกเว้นปุ่มใส่ตะกร้า */}
+        <Link
+          to={`/product/${item.id}`}
+          title={item.title}
+          className="block w-full truncate font-semibold after:absolute after:inset-0 after:rounded-2xl hover:text-primary"
+        >
           {item.title}
-        </p>
+        </Link>
         <p className="w-full truncate text-xs text-muted-foreground">
           {item.category?.name || item.description}
         </p>
@@ -68,7 +74,7 @@ const ProductCard = ({ item, className }) => {
             onClick={handleAdd}
             disabled={outOfStock}
             aria-label={`เพิ่ม ${item.title} ลงตะกร้า`}
-            className="inline-flex items-center gap-2 rounded-full border border-primary/30 px-4 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground disabled:hover:bg-transparent"
+            className="relative z-10 inline-flex items-center gap-2 rounded-full border border-primary/30 px-4 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary hover:text-primary-foreground disabled:cursor-not-allowed disabled:border-border disabled:text-muted-foreground disabled:hover:bg-transparent"
           >
             <ShoppingCart size={15} />
             {priceFormat(item.price)}
