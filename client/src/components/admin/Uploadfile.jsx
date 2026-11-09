@@ -65,8 +65,8 @@ const Uploadfile = ({ form, setForm }) => {
   return (
     <div className="flex flex-wrap gap-3">
       {form.images.map((item) => (
-        <div key={item.public_id} className="group relative size-24 overflow-hidden rounded-xl border bg-muted/40">
-          <img src={item.url} alt="" className="h-full w-full object-cover" />
+        <div key={item.public_id} className="group relative size-24 overflow-hidden rounded-xl border bg-white">
+          <img src={item.url} alt="" className="h-full w-full object-contain p-1" />
           <button
             type="button"
             onClick={() => handleDelete(item.public_id)}

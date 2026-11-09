@@ -155,9 +155,9 @@ const Product = () => {
         <ul className="divide-y md:hidden">
           {filtered.map((item) => (
             <li key={item.id} className="flex gap-3 p-4">
-              <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+              <div className="size-16 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/5">
                 {item.images?.length > 0 ? (
-                  <img src={item.images[0].url} alt="" className="h-full w-full object-cover" />
+                  <img src={item.images[0].url} alt="" className="h-full w-full object-contain p-1" />
                 ) : (
                   <div className="flex h-full items-center justify-center text-muted-foreground">
                     <ImageOff size={18} />
@@ -205,9 +205,9 @@ const Product = () => {
                 <tr key={item.id} className="hover:bg-muted/30">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
-                      <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-muted">
+                      <div className="size-12 shrink-0 overflow-hidden rounded-lg bg-white ring-1 ring-black/5">
                         {item.images?.length > 0 ? (
-                          <img src={item.images[0].url} alt="" className="h-full w-full object-cover" />
+                          <img src={item.images[0].url} alt="" className="h-full w-full object-contain p-1" />
                         ) : (
                           <div className="flex h-full items-center justify-center text-muted-foreground">
                             <ImageOff size={18} />
