@@ -7,12 +7,13 @@ import About from "../pages/About";
 import Cart from "../pages/Cart";
 import Checkout from "../pages/Checkout";
 import Login from "../pages/auth/Login";
+import Register from "../pages/auth/Register";
 import Layout from "../layouts/Layout";
+import AuthLayout from "../layouts/AuthLayout";
 import LayoutUser from "../layouts/LayoutUser";
 import ProtectRoute from "./ProtectRoute";
 
-// หน้าที่ใช้ไลบรารีใหญ่ (สมัครสมาชิก/zxcvbn, admin, ชำระเงิน/Stripe) โหลดแยกเมื่อเข้าใช้จริง
-const Register = lazy(() => import("../pages/auth/Register"));
+// หน้าที่ใช้ไลบรารีใหญ่ (admin, ชำระเงิน/Stripe) โหลดแยกเมื่อเข้าใช้จริง
 const LayoutAdmin = lazy(() => import("../layouts/LayoutAdmin"));
 const Dashboard = lazy(() => import("../pages/admin/Dashboard"));
 const Category = lazy(() => import("../pages/admin/Category"));
@@ -55,8 +56,14 @@ const router = createBrowserRouter([
       { path: "about", element: <About /> },
       { path: "cart", element: <Cart /> },
       { path: "checkout", element: <Checkout /> },
-      { path: "login", element: <Login /> },
-      { path: "register", element: lazyPage(<Register />) },
+      {
+        // Login / Register ใช้กรอบเดียวกัน -> สลับหน้าแล้วมีแอนิเมชัน
+        element: <AuthLayout />,
+        children: [
+          { path: "login", element: <Login /> },
+          { path: "register", element: <Register /> },
+        ],
+      },
       { path: "*", element: <NotFound /> },
     ],
   },

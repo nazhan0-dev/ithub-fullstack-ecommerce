@@ -1,9 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { useForm, useWatch } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import zxcvbn from "zxcvbn";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -41,7 +41,12 @@ const Register = () => {
   } = useForm({ resolver: zodResolver(registerSchema) });
 
   const password = useWatch({ control, name: "password" }) || "";
-  const score = password ? zxcvbn(password).score : 0;
+  // zxcvbn ไฟล์ใหญ่ -> โหลดตามหลังหลังหน้าแสดงแล้ว (หน้าเปิดได้ทันที ไม่ต้องรอ)
+  const [zxcvbn, setZxcvbn] = useState(null);
+  useEffect(() => {
+    import("zxcvbn").then((m) => setZxcvbn(() => m.default));
+  }, []);
+  const score = password && zxcvbn ? zxcvbn(password).score : 0;
   const barColor = score <= 1 ? "bg-red-500" : score <= 2 ? "bg-amber-400" : "bg-emerald-500";
 
   const onSubmit = async (data) => {
@@ -94,7 +99,7 @@ const Register = () => {
             aria-invalid={!!errors.confirmPassword} className="h-11" {...register("confirmPassword")} />
         </Field>
 
-        <Button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-full text-base font-semibold">
+        <Button type="submit" disabled={isSubmitting} className="h-11 w-full rounded-full text-base font-semibold transition-transform active:scale-[0.97]">
           {isSubmitting ? "กำลังสมัคร..." : "สมัครสมาชิก"}
         </Button>
       </form>

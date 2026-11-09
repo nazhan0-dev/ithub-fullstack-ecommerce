@@ -4,7 +4,7 @@ import { ArrowRight, BadgeCheck, PackageSearch, ShieldCheck, Truck } from "lucid
 import useEcomStore from "../store/ecom-store";
 import { listProduct } from "../api/product";
 import { numberFormat } from "../utils/number";
-import cover from "../assets/banners/banner-1.jpg";
+import cover from "../assets/about-cover.jpg";
 
 // ---- แก้ข้อความของร้านได้ที่นี่ ----
 const STORY = [

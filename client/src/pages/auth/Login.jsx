@@ -61,7 +61,7 @@ const Login = () => {
           <Input id="password" name="password" type="password" required autoComplete="current-password"
             placeholder="••••••••" className="h-11" onChange={handleChange} />
         </div>
-        <Button type="submit" disabled={loading} className="h-11 w-full rounded-full text-base font-semibold">
+        <Button type="submit" disabled={loading} className="h-11 w-full rounded-full text-base font-semibold transition-transform active:scale-[0.97]">
           {loading ? "กำลังเข้าสู่ระบบ..." : "เข้าสู่ระบบ"}
         </Button>
       </form>

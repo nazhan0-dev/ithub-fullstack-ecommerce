@@ -1,27 +1,20 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { Pagination, Autoplay } from "swiper/modules";
 import "swiper/css";
 import "swiper/css/pagination";
 import { ArrowRight } from "lucide-react";
-import banner1 from "../../assets/banners/banner-1.jpg";
-import banner2 from "../../assets/banners/banner-2.jpg";
-import banner3 from "../../assets/banners/banner-3.jpg";
-import banner4 from "../../assets/banners/banner-4.jpg";
-import banner5 from "../../assets/banners/banner-5.jpg";
-import banner6 from "../../assets/banners/banner-6.jpg";
-
-// รูปแบนเนอร์จาก Unsplash (ใช้ได้ฟรีตาม Unsplash License) เก็บไว้ในโปรเจกต์ ไม่ต้องโหลดจากภายนอก
-const BANNERS = [
-  { src: banner1, alt: "โน้ตบุ๊กพร้อมไฟคีย์บอร์ดโทนม่วง" },
-  { src: banner2, alt: "ชุดคอมพิวเตอร์เกมมิ่งพร้อมจอและคีย์บอร์ด RGB" },
-  { src: banner3, alt: "การ์ดจอประสิทธิภาพสูง" },
-  { src: banner4, alt: "โต๊ะทำงานพร้อมคอมพิวเตอร์ในแสงไฟสีชมพู" },
-  { src: banner5, alt: "ซีพียูบนเมนบอร์ด" },
-  { src: banner6, alt: "แผงวงจรอิเล็กทรอนิกส์" },
-];
+import { getHeroOrder, rememberFirst } from "../../utils/heroImages";
 
 const ContentCarousel = () => {
+  // สุ่มลำดับครั้งเดียวต่อการเปิดหน้า (ไม่สุ่มใหม่ทุกครั้งที่ render)
+  const [banners] = useState(getHeroOrder);
+
+  useEffect(() => {
+    rememberFirst(banners[0]);
+  }, [banners]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-3">
       {/* Hero ข้อความ */}
@@ -50,14 +43,19 @@ const ContentCarousel = () => {
       {/* รูปสไลด์ */}
       <Swiper
         modules={[Pagination, Autoplay]}
-        pagination={{ clickable: true }}
+        pagination={{ clickable: true, dynamicBullets: true }}
         autoplay={{ delay: 3500, disableOnInteraction: false }}
         loop
         className="h-64 w-full min-w-0 overflow-hidden rounded-3xl bg-muted md:h-80 lg:col-span-2"
       >
-        {BANNERS.map((b) => (
-          <SwiperSlide key={b.src}>
-            <img src={b.src} alt={b.alt} className="h-full w-full object-cover" />
+        {banners.map((b, i) => (
+          <SwiperSlide key={b.name}>
+            <img
+              src={b.src}
+              alt={b.alt}
+              loading={i === 0 ? "eager" : "lazy"}
+              className="h-full w-full object-cover"
+            />
           </SwiperSlide>
         ))}
       </Swiper>
