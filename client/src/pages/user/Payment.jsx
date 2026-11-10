@@ -4,6 +4,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { CreditCard } from "lucide-react";
 import { payment } from "../../api/stripe";
 import CheckoutForm from "../../components/CheckoutForm";
+import { priceFormat } from "../../utils/number";
 
 // ตั้งค่า VITE_STRIPE_PUBLISHABLE_KEY ใน client/.env เพื่อเปลี่ยน key ได้โดยไม่ต้องแก้โค้ด
 const stripePromise = loadStripe(
@@ -21,14 +22,18 @@ const appearance = {
 
 const Payment = () => {
   const [clientSecret, setClientSecret] = useState("");
+  const [summary, setSummary] = useState(null); // { subtotal, discount, total, coupon }
   const [error, setError] = useState("");
 
   useEffect(() => {
     payment()
-      .then((res) => setClientSecret(res.data.clientSecret))
+      .then((res) => {
+        setClientSecret(res.data.clientSecret);
+        setSummary(res.data);
+      })
       .catch((err) => {
         console.log(err);
-        setError("ไม่สามารถเริ่มการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
+        setError(err.response?.data?.message || "ไม่สามารถเริ่มการชำระเงินได้ กรุณาลองใหม่อีกครั้ง");
       });
   }, []);
 
@@ -41,6 +46,26 @@ const Payment = () => {
         <h1 className="text-2xl font-bold tracking-tight">ชำระเงิน</h1>
         <p className="text-sm text-muted-foreground">กรอกข้อมูลบัตรเพื่อยืนยันคำสั่งซื้อ</p>
       </div>
+
+      {summary && (
+        <div className="flex items-center justify-between rounded-2xl bg-secondary/60 px-5 py-4">
+          <div className="text-sm">
+            <p className="text-muted-foreground">ยอดที่ต้องชำระ</p>
+            {summary.discount > 0 && (
+              <p className="text-xs text-emerald-700">
+                ใช้โค้ด <span className="font-mono font-semibold">{summary.coupon?.code}</span> ลด{" "}
+                {priceFormat(summary.discount)}
+              </p>
+            )}
+          </div>
+          <div className="text-right">
+            {summary.discount > 0 && (
+              <p className="text-xs text-muted-foreground line-through">{priceFormat(summary.subtotal)}</p>
+            )}
+            <p className="text-2xl font-extrabold text-primary">{priceFormat(summary.total)}</p>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-black/5 sm:p-8">
         {error ? (

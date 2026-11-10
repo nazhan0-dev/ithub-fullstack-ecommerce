@@ -135,7 +135,12 @@ const ManageOrders = () => {
                 <p className="text-xs text-muted-foreground">ที่อยู่: {item.orderedBy.address}</p>
               )}
               <div className="flex items-center justify-between gap-3">
-                <span className="font-bold">{priceFormat(item.cartTotal)}</span>
+                <span className="font-bold">
+                  {priceFormat(item.cartTotal)}
+                  {item.couponCode && (
+                    <span className="ml-1.5 font-mono text-xs font-medium text-emerald-700">{item.couponCode}</span>
+                  )}
+                </span>
                 <StatusSelect value={item.orderStatus} refunded={item.status === "refunded"} onChange={(v) => handleChangeStatus(item.id, v)} />
               </div>
             </li>
@@ -181,6 +186,11 @@ const ManageOrders = () => {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-right font-semibold">
                     {priceFormat(item.cartTotal)}
+                    {item.couponCode && (
+                      <p className="font-mono text-xs font-medium text-emerald-700" title={`ส่วนลด ${priceFormat(item.discount)}`}>
+                        {item.couponCode} −{priceFormat(item.discount)}
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex flex-col items-start gap-2">

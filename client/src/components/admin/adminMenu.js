@@ -1,4 +1,4 @@
-import { ClipboardList, GalleryHorizontal, LayoutDashboard, PackageSearch, Tags, Users } from "lucide-react";
+import { ClipboardList, GalleryHorizontal, TicketPercent, LayoutDashboard, PackageSearch, Tags, Users } from "lucide-react";
 
 // เมนูหลังร้าน (ใช้ทั้ง Sidebar และชื่อหน้าใน Header)
 export const ADMIN_MENU = [
@@ -8,7 +8,10 @@ export const ADMIN_MENU = [
   },
   {
     group: "การขาย",
-    items: [{ to: "/admin/orders", label: "คำสั่งซื้อ", icon: ClipboardList, badge: "pending" }],
+    items: [
+      { to: "/admin/orders", label: "คำสั่งซื้อ", icon: ClipboardList, badge: "pending" },
+      { to: "/admin/coupons", label: "คูปองส่วนลด", icon: TicketPercent },
+    ],
   },
   {
     group: "แคตตาล็อก",

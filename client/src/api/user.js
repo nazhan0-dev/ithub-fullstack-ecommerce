@@ -17,3 +17,7 @@ export const setRestockAlert = (productId, subscribe) =>
 export const getWishlist = () => api.get("/user/wishlist");
 export const setWishlist = (productId, liked) => api.post("/user/wishlist/" + productId, { liked });
 export const cancelOrder = (orderId) => api.post(`/user/order/${orderId}/cancel`);
+
+// โค้ดส่วนลด
+export const applyCoupon = (code) => api.post("/user/cart/coupon", { code });
+export const removeCoupon = () => api.delete("/user/cart/coupon");

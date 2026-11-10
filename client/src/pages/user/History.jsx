@@ -179,7 +179,13 @@ const OrderCard = ({ order, index, ref, onCancel, cancelling }) => (
     </div>
 
     <footer className="flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4">
-      <div className="flex items-baseline gap-3">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        {order.discount > 0 && (
+          <span className="w-full text-xs text-emerald-700">
+            ใช้โค้ด <span className="font-mono font-semibold">{order.couponCode}</span> ลด{" "}
+            {priceFormat(order.discount)}
+          </span>
+        )}
         <span className="text-sm text-muted-foreground">รวมสุทธิ</span>
         <span className="text-lg font-extrabold tabular-nums text-primary">
           <CountUp value={order.cartTotal} />

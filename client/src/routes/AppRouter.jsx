@@ -4,6 +4,7 @@ import { Loader2 } from "lucide-react";
 import Home from "../pages/Home";
 import Shop from "../pages/Shop";
 import ProductDetail from "../pages/ProductDetail";
+import CouponCenter from "../pages/Coupons";
 import About from "../pages/About";
 import Cart from "../pages/Cart";
 import Checkout from "../pages/Checkout";
@@ -23,6 +24,7 @@ const EditProduct = lazy(() => import("../pages/admin/EditProduct"));
 const Manage = lazy(() => import("../pages/admin/Manage"));
 const ManageOrders = lazy(() => import("../pages/admin/ManageOrders"));
 const Banners = lazy(() => import("../pages/admin/Banners"));
+const Coupons = lazy(() => import("../pages/admin/Coupons"));
 const History = lazy(() => import("../pages/user/History"));
 const Payment = lazy(() => import("../pages/user/Payment"));
 const Wishlist = lazy(() => import("../pages/user/Wishlist"));
@@ -57,6 +59,7 @@ const router = createBrowserRouter([
       { index: true, element: <Home /> },
       { path: "shop", element: <Shop /> },
       { path: "product/:id", element: <ProductDetail /> },
+      { path: "coupons", element: <CouponCenter /> },
       { path: "about", element: <About /> },
       { path: "cart", element: <Cart /> },
       { path: "checkout", element: <Checkout /> },
@@ -82,6 +85,7 @@ const router = createBrowserRouter([
       { path: "manage", element: lazyPage(<Manage />) },
       { path: "orders", element: lazyPage(<ManageOrders />) },
       { path: "banners", element: lazyPage(<Banners />) },
+      { path: "coupons", element: lazyPage(<Coupons />) },
     ],
   },
   {

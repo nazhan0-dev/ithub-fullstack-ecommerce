@@ -1,9 +1,11 @@
 const { query, one, transaction, withLineItems } = require('../config/db')
 const { stripe, toSatang } = require('../config/stripe')
+const { cartPricing, publicCoupon } = require('./coupon')
 
+// ตัดเงินไปแล้วแต่สร้างคำสั่งซื้อไม่ได้ -> คืนเงินอัตโนมัติ
 class OutOfStockError extends Error {
-    constructor(paymentIntentId) {
-        super('ขออภัย สินค้าบางรายการหมดระหว่างชำระเงิน ระบบได้คืนเงินให้แล้ว')
+    constructor(paymentIntentId, message = 'ขออภัย สินค้าบางรายการหมดระหว่างชำระเงิน ระบบได้คืนเงินให้แล้ว') {
+        super(message)
         this.paymentIntentId = paymentIntentId
     }
 }
@@ -112,10 +114,20 @@ exports.getUserCart = async (req, res) => {
     try {
         const cart = await one('SELECT * FROM cart WHERE orderedById = ? ORDER BY id DESC LIMIT 1', [Number(req.user.id)])
         if (!cart) {
-            return res.json({ products: [], cartTotal: 0 })
+            return res.json({ products: [], cartTotal: 0, discount: 0, total: 0, coupon: null })
         }
         const [full] = await withLineItems([cart], 'productoncart', 'cartId')
-        res.json({ products: full.products, cartTotal: full.cartTotal })
+        const pricing = await cartPricing(cart, Number(req.user.id))
+        // คูปองใช้ไม่ได้แล้ว (หมดอายุ/ครบจำนวน/ยอดไม่ถึง) -> ถอดออกจากตะกร้า แล้วแจ้งเหตุผล
+        if (pricing.couponError) await query('UPDATE cart SET couponId = NULL WHERE id = ?', [cart.id])
+        res.json({
+            products: full.products,
+            cartTotal: full.cartTotal,
+            discount: pricing.discount,
+            total: pricing.total,
+            coupon: publicCoupon(pricing.coupon),
+            couponError: pricing.couponError || null,
+        })
     } catch (error) {
         console.log(error)
         res.status(500).json({ message: 'Server Error' })
@@ -169,26 +181,41 @@ exports.saveOrder = async (req, res) => {
         } catch {
             return res.status(400).json({ ok: false, message: 'Payment not found' })
         }
-        if (
-            paymentIntent.status !== 'succeeded' ||
-            paymentIntent.metadata?.userId !== String(userId) ||
-            paymentIntent.amount !== toSatang(cart.cartTotal)
-        ) {
+        if (paymentIntent.status !== 'succeeded' || paymentIntent.metadata?.userId !== String(userId)) {
             return res.status(400).json({ ok: false, message: 'Payment not completed' })
         }
         const used = await one('SELECT id FROM `order` WHERE stripePayment = ?', [paymentIntent.id])
         if (used) {
             return res.status(400).json({ ok: false, message: 'Payment already used' })
         }
+        // ยอดที่ต้องจ่าย = ยอดตะกร้า - ส่วนลดคูปอง
+        // จ่ายแล้วแต่ยอดไม่ตรง (เช่น คูปองหมดอายุ/ครบจำนวนระหว่างจ่าย, ตะกร้าเปลี่ยน) -> คืนเงินให้ แล้วให้สั่งใหม่
+        const pricing = await cartPricing(cart, userId)
+        if (paymentIntent.amount !== toSatang(pricing.total)) {
+            await stripe.refunds
+                .create({ payment_intent: paymentIntent.id }, { idempotencyKey: `mismatch-${paymentIntent.id}` })
+                .catch(console.log)
+            return res.status(409).json({
+                ok: false,
+                message: pricing.couponError
+                    ? `${pricing.couponError} ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่`
+                    : 'ยอดชำระไม่ตรงกับตะกร้า ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่',
+            })
+        }
 
         const { id, amount, status, currency } = paymentIntent
 
         // สร้างคำสั่งซื้อ + ตัดสต็อก + ล้างตะกร้า ในชุดเดียว
         const order = await transaction(async (conn) => {
+            // ตรวจคูปองซ้ำแบบล็อกแถว: กันคนอื่นใช้โค้ดจนครบจำนวนระหว่างที่เรากำลังจ่าย
+            const locked = await cartPricing(cart, userId, conn, true)
+            if (locked.discount !== pricing.discount) {
+                throw new OutOfStockError(id, 'โค้ดส่วนลดใช้ไม่ได้แล้วระหว่างชำระเงิน ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่')
+            }
             const result = await query(
-                `INSERT INTO \`order\` (cartTotal, orderedById, stripePayment, amount, status, currency, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
-                [cart.cartTotal, userId, id, amount, status, currency],
+                `INSERT INTO \`order\` (cartTotal, couponCode, discount, orderedById, stripePayment, amount, status, currency, createdAt, updatedAt)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
+                [pricing.total, pricing.coupon?.code || null, pricing.discount, userId, id, amount, status, currency],
                 conn
             )
             const orderId = result.insertId

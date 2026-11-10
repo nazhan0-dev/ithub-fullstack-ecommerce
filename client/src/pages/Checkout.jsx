@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import { CheckCircle2, MapPin } from "lucide-react";
+import { motion } from "motion/react";
 import useEcomStore from "../store/ecom-store";
 import { listUserCart, saveAddress } from "../api/user";
 import { priceFormat } from "../utils/number";
+import CouponBox from "../components/CouponBox";
 import { Button } from "@/components/ui/button";
 
 const Checkout = () => {
@@ -13,6 +15,8 @@ const Checkout = () => {
 
   const [products, setProducts] = useState([]);
   const [cartTotal, setCartTotal] = useState(0);
+  const [coupon, setCoupon] = useState(null);
+  const [discount, setDiscount] = useState(0);
   const [address, setAddress] = useState("");
   const [addressSaved, setAddressSaved] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -23,6 +27,10 @@ const Checkout = () => {
       .then((res) => {
         setProducts(res.data.products);
         setCartTotal(res.data.cartTotal);
+        setCoupon(res.data.coupon);
+        setDiscount(res.data.discount || 0);
+        // โค้ดที่เคยใส่ใช้ไม่ได้แล้ว (หมดอายุ/ครบจำนวน) -> ระบบถอดออกให้ แจ้งเหตุผล
+        if (res.data.couponError) toast.info(`ถอดโค้ดส่วนลดออกแล้ว: ${res.data.couponError}`);
       })
       .catch((err) => console.log(err));
   }, [user]);
@@ -112,20 +120,52 @@ const Checkout = () => {
             ))}
           </div>
 
-          <div className="space-y-2 border-t pt-4 text-sm text-muted-foreground">
+          <div className="border-t pt-4">
+            <CouponBox
+              coupon={coupon}
+              discount={discount}
+              subtotal={cartTotal}
+              onChange={(data) => {
+                setCoupon(data.coupon);
+                setDiscount(data.discount || 0);
+              }}
+            />
+          </div>
+
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span>ยอดสินค้า</span>
+              <span>{priceFormat(cartTotal)}</span>
+            </div>
             <div className="flex justify-between">
               <span>ค่าจัดส่ง</span>
               <span className="text-emerald-600">ฟรี</span>
             </div>
             <div className="flex justify-between">
-              <span>ส่วนลด</span>
-              <span>{priceFormat(0)}</span>
+              <span>ส่วนลด{coupon && ` (${coupon.code})`}</span>
+              <span className={discount > 0 ? "font-semibold text-emerald-600" : ""}>
+                {discount > 0 ? `−${priceFormat(discount)}` : priceFormat(0)}
+              </span>
             </div>
           </div>
 
           <div className="flex items-center justify-between border-t pt-4">
             <span className="font-semibold">ยอดรวมสุทธิ</span>
-            <span className="text-2xl font-extrabold text-primary">{priceFormat(cartTotal)}</span>
+            <div className="text-right">
+              {discount > 0 && (
+                <p className="text-xs text-muted-foreground line-through">{priceFormat(cartTotal)}</p>
+              )}
+              {/* ยอดเปลี่ยน (ใส่/ถอดโค้ด) -> ตัวเลขเด้งเบา ๆ */}
+              <motion.p
+                key={cartTotal - discount}
+                initial={{ scale: 1.15 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 18 }}
+                className="text-2xl font-extrabold text-primary"
+              >
+                {priceFormat(cartTotal - discount)}
+              </motion.p>
+            </div>
           </div>
 
           <Button

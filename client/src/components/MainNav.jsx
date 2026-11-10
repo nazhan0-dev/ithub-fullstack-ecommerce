@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, NavLink, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, NavLink, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Search,
   ShoppingCart,
@@ -11,10 +11,13 @@ import {
   User,
   Info,
   Heart,
+  TicketPercent,
 } from "lucide-react";
 import { motion } from "motion/react";
 import useEcomStore from "../store/ecom-store";
 import useMediaQuery from "../hooks/useMediaQuery";
+import { listAvailableCoupons, listCouponCenter } from "../api/coupon";
+import { BACKGROUND } from "../api/client";
 import NotificationBell from "./NotificationBell";
 import logo from "../assets/logo.png";
 import { Button } from "@/components/ui/button";
@@ -141,6 +144,25 @@ const MainNav = () => {
   const cartCount = carts.reduce((sum, item) => sum + item.count, 0);
   const isDesktop = useMediaQuery("(min-width: 768px)");
 
+  // จำนวนคูปองที่ยังเก็บได้ (login แล้ว = ที่ยังไม่ได้เก็บ) — โหลดใหม่ทุกครั้งที่เปลี่ยนหน้า
+  const { pathname } = useLocation();
+  const [couponCount, setCouponCount] = useState(0);
+  useEffect(() => {
+    (userId ? listCouponCenter(BACKGROUND) : listAvailableCoupons())
+      .then((res) => setCouponCount(res.data.filter((c) => !c.collected).length))
+      .catch(() => {});
+  }, [userId, pathname]);
+
+  const couponLink = (
+    <NavLink to="/coupons" className={navItemClass} aria-label={`เก็บคูปอง ${couponCount} ใบ`}>
+      <span className="relative">
+        <TicketPercent size={18} />
+        {couponCount > 0 && <CountBadge value={couponCount} className="bg-rose-500" />}
+      </span>
+      <span className="hidden lg:inline">คูปอง</span>
+    </NavLink>
+  );
+
   const items = [
     { to: "/shop", icon: Store, label: "ร้านค้า" },
     { to: "/about", icon: Info, label: "เกี่ยวกับเรา" },
@@ -175,9 +197,12 @@ const MainNav = () => {
                   <span className="hidden lg:inline">{label}</span>
                 </NavLink>
               ))}
+              {couponLink}
               {user && <NotificationBell />}
             </>
           )}
+          {/* มือถือ: ปุ่มคูปองอยู่ด้านบนข้างโปรไฟล์ */}
+          {!isDesktop && couponLink}
 
           {user ? (
             <DropdownMenu>
@@ -201,6 +226,9 @@ const MainNav = () => {
                 )}
                 <DropdownMenuItem onClick={() => navigate("/user/history")}>
                   <Package /> ประวัติการสั่งซื้อ
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/coupons?tab=mine")}>
+                  <TicketPercent /> คูปองของฉัน
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/user/wishlist")}>
                   <Heart /> รายการโปรด

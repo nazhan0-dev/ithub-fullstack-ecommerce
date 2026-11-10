@@ -75,7 +75,9 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | GET | `/user/cart` | 👤 | `{ products, cartTotal }` |
 | DELETE | `/user/cart` | 👤 | ล้างตะกร้า |
 | POST | `/user/address` | 👤 | `{ "address": "..." }` |
-| POST | `/user/create-payment-intent` | 👤 | สร้างการชำระเงินจากยอดตะกร้า → `{ clientSecret }` |
+| POST | `/user/cart/coupon` | 👤 | `{ "code": "WELCOME10" }` → `{ subtotal, discount, total, coupon }` — ไม่ผ่านเงื่อนไขได้ `400` พร้อมเหตุผล |
+| DELETE | `/user/cart/coupon` | 👤 | ถอดโค้ดออกจากตะกร้า |
+| POST | `/user/create-payment-intent` | 👤 | สร้างการชำระเงินจากยอดตะกร้า**หลังหักส่วนลด** → `{ clientSecret, subtotal, discount, total, coupon }` |
 | POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยใช้ |
 | GET | `/user/order` | 👤 | `{ ok, orders }` — ยังไม่มีคำสั่งซื้อได้ `orders: []` |
 | POST | `/user/order/:id/cancel` | 👤 | ยกเลิกคำสั่งซื้อของตัวเอง (เฉพาะ `Not Process`) → คืนสต็อก + คืนเงินผ่าน Stripe, `status` = `refunded` — สถานะอื่นได้ `400`, ไม่ใช่ของตัวเองได้ `404`, Stripe ไม่ผ่านได้ `502` (ไม่ยกเลิก) |
@@ -107,6 +109,24 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | POST | `/admin/banners` | 🛡️ | `{ "title", "subtitle", "productId", "image": { "secure_url", "public_id" } }` — อัปรูปผ่าน `POST /images` ก่อน |
 | PUT | `/admin/banners/:id` | 🛡️ | ส่งเฉพาะช่องที่แก้ เช่น `{ "isActive": false }` — ส่ง `image` ใหม่ = ลบรูปเก่าบน Cloudinary |
 | DELETE | `/admin/banners/:id` | 🛡️ | ลบแบนเนอร์ + รูปบน Cloudinary |
+
+### เก็บคูปอง (ลูกค้า)
+
+| Method | Endpoint | สิทธิ์ | หมายเหตุ |
+|---|---|---|---|
+| GET | `/coupons` | 🌐 | คูปองที่กำลังแจก (เปิดใช้งาน + `isPublic` + ยังไม่หมดอายุ/ไม่ครบจำนวน) |
+| GET | `/user/coupons/center` | 👤 | เหมือนด้านบน + `collected` |
+| POST | `/user/coupons/:id/collect` | 👤 | เก็บเข้ากระเป๋า (เก็บซ้ำได้ไม่เกิดผล) — โค้ดลับ/หมดแล้วได้ `400` |
+| GET | `/user/coupons?subtotal=11800` | 👤 | คูปองที่เก็บไว้ + `status` (`ready`/`unusable`), `usable`, `discount`, `reason` สำหรับยอดนั้น |
+
+### คูปองส่วนลด (admin)
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| GET | `/admin/coupons` | 🛡️ | ทั้งหมด พร้อม `used` (ครั้งที่ใช้) และ `totalDiscount` |
+| POST | `/admin/coupons` | 🛡️ | `{ "code" (A-Z 0-9 . - _), "description", "type": "percent"\|"fixed", "value", "minOrder", "maxDiscount", "usageLimit", "perUserLimit", "startsAt", "expiresAt", "isPublic" }` — ช่องที่เว้นว่าง = ไม่จำกัด |
+| PUT | `/admin/coupons/:id` | 🛡️ | ส่งเฉพาะช่องที่แก้ เช่น `{ "isActive": false }` |
+| DELETE | `/admin/coupons/:id` | 🛡️ | ลบ (คำสั่งซื้อเดิมยังเก็บโค้ดไว้) |
 
 ### ผู้ดูแลระบบ
 

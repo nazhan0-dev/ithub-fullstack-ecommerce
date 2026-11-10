@@ -22,9 +22,12 @@ CREATE TABLE IF NOT EXISTS `cart` (
   `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` datetime(3) NOT NULL,
   `orderedById` int NOT NULL,
+  `couponId` int DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `Cart_orderedById_fkey` (`orderedById`),
-  CONSTRAINT `Cart_orderedById_fkey` FOREIGN KEY (`orderedById`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+  KEY `Cart_couponId_fkey` (`couponId`),
+  CONSTRAINT `Cart_orderedById_fkey` FOREIGN KEY (`orderedById`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `Cart_couponId_fkey` FOREIGN KEY (`couponId`) REFERENCES `coupon` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
@@ -58,6 +61,8 @@ CREATE TABLE IF NOT EXISTS `image` (
 CREATE TABLE IF NOT EXISTS `order` (
   `id` int NOT NULL AUTO_INCREMENT,
   `cartTotal` double NOT NULL,
+  `couponCode` varchar(40) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `discount` double NOT NULL DEFAULT '0',
   `orderStatus` varchar(191) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'Not Process',
   `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
   `updatedAt` datetime(3) NOT NULL,
@@ -69,6 +74,7 @@ CREATE TABLE IF NOT EXISTS `order` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `Order_stripePayment_key` (`stripePayment`),
   KEY `Order_orderedById_fkey` (`orderedById`),
+  KEY `Order_couponCode_idx` (`couponCode`),
   CONSTRAINT `Order_orderedById_fkey` FOREIGN KEY (`orderedById`) REFERENCES `user` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -192,6 +198,40 @@ CREATE TABLE IF NOT EXISTS `banner` (
   PRIMARY KEY (`id`),
   KEY `Banner_productId_idx` (`productId`),
   CONSTRAINT `Banner_productId_fkey` FOREIGN KEY (`productId`) REFERENCES `product` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- คูปองส่วนลด
+CREATE TABLE IF NOT EXISTS `coupon` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `code` varchar(40) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` varchar(191) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `type` varchar(10) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'percent = ลดเป็น %, fixed = ลดเป็นบาท',
+  `value` double NOT NULL,
+  `minOrder` double NOT NULL DEFAULT '0' COMMENT 'ยอดสั่งซื้อขั้นต่ำ (บาท)',
+  `maxDiscount` double DEFAULT NULL COMMENT 'ลดสูงสุด (บาท) ใช้กับแบบ %',
+  `usageLimit` int DEFAULT NULL COMMENT 'ใช้ได้ทั้งหมดกี่ครั้ง (NULL = ไม่จำกัด)',
+  `perUserLimit` int DEFAULT '1' COMMENT 'ต่อคนใช้ได้กี่ครั้ง (NULL = ไม่จำกัด)',
+  `startsAt` datetime(3) DEFAULT NULL,
+  `expiresAt` datetime(3) DEFAULT NULL,
+  `isActive` tinyint(1) NOT NULL DEFAULT '1',
+  `isPublic` tinyint(1) NOT NULL DEFAULT '1' COMMENT 'แสดงในหน้าเก็บคูปอง (0 = ใช้ได้เฉพาะคนที่รู้โค้ด)',
+  `createdAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updatedAt` datetime(3) NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `Coupon_code_key` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- กระเป๋าคูปองของลูกค้า
+CREATE TABLE IF NOT EXISTS `usercoupon` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `userId` int NOT NULL,
+  `couponId` int NOT NULL,
+  `collectedAt` datetime(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `UserCoupon_user_coupon_key` (`userId`, `couponId`),
+  KEY `UserCoupon_couponId_idx` (`couponId`),
+  CONSTRAINT `UserCoupon_userId_fkey` FOREIGN KEY (`userId`) REFERENCES `user` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `UserCoupon_couponId_fkey` FOREIGN KEY (`couponId`) REFERENCES `coupon` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
