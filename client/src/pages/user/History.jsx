@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Check, ClipboardCheck, Loader2, Package, PackageCheck, Truck, XCircle } from "lucide-react";
 import { AnimatePresence, MotionConfig, animate, motion } from "motion/react";
 import { toast } from "react-toastify";
-import Swal from "sweetalert2";
+import CancelOrderDialog from "../../components/CancelOrderDialog";
 import { cancelOrder, getOrders } from "../../api/user";
 import { priceFormat } from "../../utils/number";
 import { dateFormat } from "../../utils/dateformat";
@@ -207,22 +207,17 @@ const History = () => {
   const [filter, setFilter] = useState("all");
   const [cancellingId, setCancellingId] = useState(null);
 
-  const handleCancel = async (order) => {
-    const confirm = await Swal.fire({
-      title: `ยกเลิกคำสั่งซื้อ #${orderCode(order.id)}?`,
-      html: `ระบบจะคืนเงิน <b>${priceFormat(order.cartTotal)}</b> เข้าบัตรที่ใช้ชำระ<br/><small>(ใช้เวลา 5–10 วันทำการตามธนาคาร)</small>`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonColor: "#dc2626",
-      confirmButtonText: "ยกเลิกคำสั่งซื้อ",
-      cancelButtonText: "ไม่ยกเลิก",
-      reverseButtons: true,
-    });
-    if (!confirm.isConfirmed) return;
+  // กดปุ่มยกเลิก -> เปิดหน้าต่างยืนยัน
+  const [confirmOrder, setConfirmOrder] = useState(null);
+  const handleCancel = (order) => setConfirmOrder(order);
+
+  const confirmCancel = async () => {
+    const order = confirmOrder;
     setCancellingId(order.id);
     try {
       const res = await cancelOrder(order.id);
       setOrders((list) => list.map((o) => (o.id === order.id ? { ...o, ...res.data.order } : o)));
+      setConfirmOrder(null);
       toast.success("ยกเลิกคำสั่งซื้อแล้ว กำลังคืนเงิน");
     } catch (error) {
       toast.error(error.response?.data?.message || "ยกเลิกคำสั่งซื้อไม่สำเร็จ");
@@ -348,6 +343,12 @@ const History = () => {
           </div>
         )}
       </div>
+      <CancelOrderDialog
+        order={confirmOrder}
+        busy={!!confirmOrder && cancellingId === confirmOrder.id}
+        onConfirm={confirmCancel}
+        onClose={() => setConfirmOrder(null)}
+      />
     </MotionConfig>
   );
 };
