@@ -6,11 +6,9 @@ import { payment } from "../../api/stripe";
 import CheckoutForm from "../../components/CheckoutForm";
 import { priceFormat } from "../../utils/number";
 
-// ตั้งค่า VITE_STRIPE_PUBLISHABLE_KEY ใน client/.env เพื่อเปลี่ยน key ได้โดยไม่ต้องแก้โค้ด
-const stripePromise = loadStripe(
-  import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ||
-    "pk_test_51TgFngDaedfPH6cGLRlfkKSh8xBbaHq4dVzGgLHo6dh03Kl20kurkUm9FXyjwVrbhszlYj5xqIqtiK62GAdHSsmF00PpafLwkm",
-);
+// Stripe publishable key มาจาก client/.env (VITE_STRIPE_PUBLISHABLE_KEY) เท่านั้น — ไม่ hardcode ในโค้ด
+const STRIPE_KEY = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null;
 
 const appearance = {
   theme: "stripe",
@@ -23,9 +21,13 @@ const appearance = {
 const Payment = () => {
   const [clientSecret, setClientSecret] = useState("");
   const [summary, setSummary] = useState(null); // { subtotal, discount, total, coupon }
-  const [error, setError] = useState("");
+  // ไม่ได้ตั้ง key -> แสดงข้อความแทนฟอร์มบัตร (และไม่สร้างรายการชำระเงินที่ Stripe)
+  const [error, setError] = useState(
+    STRIPE_KEY ? "" : "ระบบชำระเงินยังไม่พร้อมใช้งาน: ไม่ได้ตั้งค่า VITE_STRIPE_PUBLISHABLE_KEY ใน client/.env",
+  );
 
   useEffect(() => {
+    if (!STRIPE_KEY) return;
     payment()
       .then((res) => {
         setClientSecret(res.data.clientSecret);

@@ -142,6 +142,7 @@ npm start                   # รันที่ http://localhost:8000
 ```bash
 cd client
 npm install
+cp .env.example .env        # แล้วใส่ VITE_STRIPE_PUBLISHABLE_KEY (pk_test_...)
 npm run dev                 # รันที่ http://localhost:5173
 ```
 
@@ -219,12 +220,12 @@ mysqldump -u root -p --no-data --skip-comments ecom > server/db/schema.sql
 | `COOKIE_SAMESITE` | | ค่าเริ่มต้น `lax` — ตั้ง `none` เมื่อหน้าเว็บกับ API อยู่คนละโดเมน (ต้องใช้ HTTPS) |
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | | บัญชีที่ `npm run seed` สร้าง |
 
-**`client/.env`** (ไม่บังคับ — ตัวอย่าง: [`client/.env.example`](client/.env.example))
+**`client/.env`** (ตัวอย่าง: [`client/.env.example`](client/.env.example))
 
-| ตัวแปร | ใช้ทำอะไร |
-|---|---|
-| `VITE_API_URL` | ที่อยู่ API (ค่าเริ่มต้น `http://localhost:8000/api`) |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key (`pk_test_...`) ต้องมาจากบัญชีเดียวกับ `STRIPE_SECRET_KEY` |
+| ตัวแปร | จำเป็น | ใช้ทำอะไร |
+|---|---|---|
+| `VITE_API_URL` | | ที่อยู่ API (ค่าเริ่มต้น `http://localhost:8000/api`) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | ✅ | Stripe publishable key (`pk_test_...`) ต้องมาจากบัญชีเดียวกับ `STRIPE_SECRET_KEY` — ไม่ตั้งแล้วหน้าชำระเงินจะแจ้งว่าระบบชำระเงินยังไม่พร้อม |
 
 แก้ `.env` แล้วต้องรีสตาร์ตทั้ง server และ `npm run dev`
 
