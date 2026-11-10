@@ -134,7 +134,7 @@ cd server
 npm install
 cp .env.example .env        # แล้วแก้ค่าใน .env ให้ถูกต้อง (ดูหัวข้อ "ตัวแปรสภาพแวดล้อม")
 npm run seed                # สร้างบัญชีผู้ดูแลระบบ
-npm start                   # รันที่ http://localhost:8000
+npm run dev                 # รันที่ http://localhost:8000 (รีสตาร์ตอัตโนมัติเมื่อแก้โค้ด)
 ```
 
 ### 3. Frontend (เปิดอีกเทอร์มินัล)
@@ -252,7 +252,8 @@ mysqldump -u root -p --no-data --skip-comments ecom > server/db/schema.sql
 
 | ที่ | คำสั่ง | ทำอะไร |
 |---|---|---|
-| `server/` | `npm start` | รัน API (รีสตาร์ตอัตโนมัติเมื่อแก้โค้ด) |
+| `server/` | `npm run dev` | รัน API โหมดพัฒนา (nodemon รีสตาร์ตอัตโนมัติเมื่อแก้โค้ด) |
+| `server/` | `npm start` | รัน API สำหรับใช้งานจริง (`node server` ไม่ต้องใช้ nodemon) |
 | `server/` | `npm run seed` | สร้าง / รีเซ็ตบัญชี admin |
 | `client/` | `npm run dev` | รันหน้าเว็บโหมดพัฒนา |
 | `client/` | `npm run build` | build สำหรับใช้งานจริง (ผลลัพธ์อยู่ใน `client/dist`) |
