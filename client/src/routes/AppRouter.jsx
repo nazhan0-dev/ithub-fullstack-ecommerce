@@ -22,6 +22,7 @@ const Product = lazy(() => import("../pages/admin/Product"));
 const EditProduct = lazy(() => import("../pages/admin/EditProduct"));
 const Manage = lazy(() => import("../pages/admin/Manage"));
 const ManageOrders = lazy(() => import("../pages/admin/ManageOrders"));
+const Banners = lazy(() => import("../pages/admin/Banners"));
 const History = lazy(() => import("../pages/user/History"));
 const Payment = lazy(() => import("../pages/user/Payment"));
 const Wishlist = lazy(() => import("../pages/user/Wishlist"));
@@ -80,6 +81,7 @@ const router = createBrowserRouter([
       { path: "product/:id", element: lazyPage(<EditProduct />) },
       { path: "manage", element: lazyPage(<Manage />) },
       { path: "orders", element: lazyPage(<ManageOrders />) },
+      { path: "banners", element: lazyPage(<Banners />) },
     ],
   },
   {

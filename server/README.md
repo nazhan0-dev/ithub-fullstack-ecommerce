@@ -98,6 +98,16 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 
 แจ้งเตือนถูกสร้างอัตโนมัติเมื่อ admin เปลี่ยนสถานะคำสั่งซื้อ (`PUT /admin/order-status`) และเมื่อแก้สินค้าที่หมดให้มีสต็อก (`PUT /product/:id`)
 
+### แบนเนอร์หน้าแรก
+
+| Method | Endpoint | สิทธิ์ | Body / หมายเหตุ |
+|---|---|---|---|
+| GET | `/banners` | 🌐 | แบนเนอร์ที่เปิดใช้งาน พร้อม `product` (id, title, price, quantity) |
+| GET | `/admin/banners` | 🛡️ | ทั้งหมด |
+| POST | `/admin/banners` | 🛡️ | `{ "title", "subtitle", "productId", "image": { "secure_url", "public_id" } }` — อัปรูปผ่าน `POST /images` ก่อน |
+| PUT | `/admin/banners/:id` | 🛡️ | ส่งเฉพาะช่องที่แก้ เช่น `{ "isActive": false }` — ส่ง `image` ใหม่ = ลบรูปเก่าบน Cloudinary |
+| DELETE | `/admin/banners/:id` | 🛡️ | ลบแบนเนอร์ + รูปบน Cloudinary |
+
 ### ผู้ดูแลระบบ
 
 | Method | Endpoint | สิทธิ์ | Body |
