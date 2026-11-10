@@ -1,0 +1,43 @@
+# ---------- Dependencies ----------
+node_modules/
+
+# ---------- Build output ----------
+dist/
+dist-ssr/
+build/
+coverage/
+*.local
+
+# ---------- Environment variables (เก็บเฉพาะไฟล์ตัวอย่าง) ----------
+.env
+.env.*
+!.env.example
+
+# ---------- Logs ----------
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- IDE / OS ----------
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.suo
+*.sw?
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Database dumps / backups (มีข้อมูลผู้ใช้) ----------
+# โครงสร้างตาราง (schema.sql) และ migrations ต้องขึ้น git
+backup/
+*.sql
+*.dump
+!server/db/schema.sql
+!server/db/migrations/*.sql
+
+# ---------- Uploads ----------
+uploads/
