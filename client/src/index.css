@@ -167,3 +167,127 @@
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
+
+/* ---------- แจ้งเตือน (react-toastify) ให้เข้ากับดีไซน์ร้าน ---------- */
+/* ตั้งตัวแปรที่ .Toastify (ไม่ใช่ :root) เพราะ CSS ของ toastify โหลดทีหลังและจะทับ :root */
+.Toastify {
+  --toastify-font-family: inherit;
+  --toastify-toast-width: 360px;
+  --toastify-toast-min-height: 60px;
+  --toastify-toast-padding: 12px 14px;
+  --toastify-toast-bd-radius: 16px;
+  --toastify-toast-shadow: 0 12px 32px -12px rgb(76 29 149 / 0.28), 0 0 0 1px rgb(0 0 0 / 0.05);
+  --toastify-text-color-light: var(--color-foreground);
+  --toastify-color-success: #10b981;
+  --toastify-color-error: #ef4444;
+  --toastify-color-warning: #f59e0b;
+  --toastify-color-info: var(--color-primary);
+  --toastify-color-progress-success: #10b981;
+  --toastify-color-progress-error: #ef4444;
+  --toastify-color-progress-warning: #f59e0b;
+  --toastify-color-progress-info: var(--color-primary);
+}
+.Toastify .Toastify__toast {
+  gap: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  /* แถบสีบาง ๆ ด้านซ้ายตามประเภท */
+  border-left: 4px solid var(--toast-accent, var(--color-primary));
+}
+.Toastify .Toastify__toast--success { --toast-accent: #10b981; --toast-soft: #d1fae5; }
+.Toastify .Toastify__toast--error { --toast-accent: #ef4444; --toast-soft: #fee2e2; }
+.Toastify .Toastify__toast--warning { --toast-accent: #f59e0b; --toast-soft: #fef3c7; }
+.Toastify .Toastify__toast--info { --toast-accent: var(--color-primary); --toast-soft: var(--color-secondary); }
+
+/* ไอคอนอยู่ในกล่องมน สีอ่อนตามประเภท */
+.Toastify .Toastify__toast-icon {
+  margin: 0;
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  align-items: center;
+  justify-content: center;
+  background: var(--toast-soft, var(--color-secondary));
+}
+.Toastify .Toastify__toast-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* แถบเวลาบาง ๆ ด้านล่าง */
+.Toastify .Toastify__progress-bar--wrp {
+  height: 3px;
+}
+.Toastify .Toastify__progress-bar {
+  opacity: 0.55;
+}
+
+/* ปุ่มปิดจาง ๆ ชัดขึ้นตอนชี้ */
+.Toastify .Toastify__toast .Toastify__close-button {
+  align-self: center;
+  opacity: 0.35;
+}
+.Toastify .Toastify__close-button:hover {
+  opacity: 0.8;
+}
+
+/* ---------- แอนิเมชันแจ้งเตือน (ใช้กับ cssTransition ใน App.jsx) ---------- */
+@keyframes toast-in {
+  0% { opacity: 0; transform: translate3d(110%, 0, 0) scale(0.9); }
+  60% { opacity: 1; transform: translate3d(-10px, 0, 0) scale(1.02); }
+  80% { transform: translate3d(4px, 0, 0) scale(0.995); }
+  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+}
+@keyframes toast-out {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(110%, 0, 0) scale(0.92); }
+}
+/* ไอคอนหมุนเด้งออกมา */
+@keyframes toast-icon-pop {
+  0% { transform: scale(0) rotate(-60deg); }
+  60% { transform: scale(1.25) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* วงแสงกระจายรอบไอคอน 1 ครั้ง */
+@keyframes toast-icon-ring {
+  0% { opacity: 0.6; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+/* เตือน/ผิดพลาด: ส่ายเบา ๆ ให้สังเกตเห็น */
+@keyframes toast-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px) rotate(-6deg); }
+  40% { transform: translateX(4px) rotate(6deg); }
+  60% { transform: translateX(-2px) rotate(-3deg); }
+  80% { transform: translateX(2px); }
+}
+
+.toast-in { animation: toast-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.toast-out { animation: toast-out 0.3s ease-in both; }
+
+.Toastify .Toastify__toast-icon {
+  position: relative;
+  animation: toast-icon-pop 0.5s 0.18s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.Toastify .Toastify__toast-icon::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--toast-accent);
+  animation: toast-icon-ring 0.7s 0.4s ease-out both;
+  pointer-events: none;
+}
+.Toastify .Toastify__toast--error .Toastify__toast-icon svg,
+.Toastify .Toastify__toast--warning .Toastify__toast-icon svg {
+  animation: toast-shake 0.5s 0.65s ease-in-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in, .toast-out,
+  .Toastify .Toastify__toast-icon,
+  .Toastify .Toastify__toast-icon::after,
+  .Toastify .Toastify__toast-icon svg { animation: none !important; }
+  .toast-out { opacity: 0; }
+}
