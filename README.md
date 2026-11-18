@@ -1,7 +1,5 @@
 # IT Hub — ร้านค้าออนไลน์อุปกรณ์ไอที
 
-[![CI](https://github.com/nazhan0-dev/ithub-fullstack-ecommerce/actions/workflows/ci.yml/badge.svg)](https://github.com/nazhan0-dev/ithub-fullstack-ecommerce/actions/workflows/ci.yml)
-
 เว็บร้านค้าออนไลน์แบบ Full-stack มีหน้าร้านสำหรับลูกค้า และหลังร้านสำหรับผู้ดูแลระบบ
 
 | ส่วน | เทคโนโลยี |
@@ -319,8 +317,6 @@ $env:TEST_DATABASE_URL="mysql://root:password@localhost:3306/ecom_test"; npm tes
 | Webhook | ลายเซ็นผิด/ไม่มี, event อื่น, **ลูกค้าปิดแท็บแต่ยังได้ออเดอร์**, Stripe ส่งซ้ำ, event ปลอมข้อมูล, การชำระที่ไม่ใช่ของร้าน, **webhook กับหน้าเว็บยิงพร้อมกัน 6 request ได้ออเดอร์เดียว**, ไม่ได้ตั้ง secret |
 
 ผลล่าสุด: **53 เทสต์ ผ่านทั้งหมด** (unit 8 + API 45)
-
-**CI:** GitHub Actions ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) รันเทสต์ทั้งหมดกับ MySQL 8 และ lint + build หน้าเว็บ ทุกครั้งที่ push หรือเปิด pull request
 
 ## โครงสร้างโปรเจกต์
 
