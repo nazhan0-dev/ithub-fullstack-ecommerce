@@ -1,14 +1,7 @@
 const { query, one, transaction, withLineItems } = require('../config/db')
-const { stripe, toSatang } = require('../config/stripe')
+const { stripe } = require('../config/stripe')
 const { cartPricing, publicCoupon } = require('./coupon')
-
-// ตัดเงินไปแล้วแต่สร้างคำสั่งซื้อไม่ได้ -> คืนเงินอัตโนมัติ
-class OutOfStockError extends Error {
-    constructor(paymentIntentId, message = 'ขออภัย สินค้าบางรายการหมดระหว่างชำระเงิน ระบบได้คืนเงินให้แล้ว') {
-        super(message)
-        this.paymentIntentId = paymentIntentId
-    }
-}
+const { fulfillPayment } = require('../services/order')
 
 // ---------- admin: จัดการผู้ใช้ ----------
 
@@ -160,96 +153,13 @@ exports.saveAddress = async (req, res) => {
 
 // ---------- คำสั่งซื้อ ----------
 
+// POST /user/order — หน้าเว็บเรียกหลังจ่ายเงินสำเร็จ
+// ตรรกะทั้งหมดอยู่ที่ services/order.js (ใช้ร่วมกับ Stripe webhook)
 exports.saveOrder = async (req, res) => {
     try {
-        const paymentIntentId = req.body.paymentIntent?.id
-        const userId = Number(req.user.id)
-        if (typeof paymentIntentId !== 'string' || !paymentIntentId) {
-            return res.status(400).json({ ok: false, message: 'Payment is required' })
-        }
-
-        const cart = await one('SELECT * FROM cart WHERE orderedById = ? ORDER BY id DESC LIMIT 1', [userId])
-        const items = cart ? await query('SELECT * FROM productoncart WHERE cartId = ? ORDER BY id', [cart.id]) : []
-        if (!cart || items.length === 0) {
-            return res.status(400).json({ ok: false, message: 'Cart is Empty' })
-        }
-
-        // ดึงข้อมูลการชำระเงินจาก Stripe โดยตรง (ไม่เชื่อข้อมูลที่ส่งมาจากหน้าเว็บ)
-        let paymentIntent
-        try {
-            paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
-        } catch {
-            return res.status(400).json({ ok: false, message: 'Payment not found' })
-        }
-        if (paymentIntent.status !== 'succeeded' || paymentIntent.metadata?.userId !== String(userId)) {
-            return res.status(400).json({ ok: false, message: 'Payment not completed' })
-        }
-        const used = await one('SELECT id FROM `order` WHERE stripePayment = ?', [paymentIntent.id])
-        if (used) {
-            return res.status(400).json({ ok: false, message: 'Payment already used' })
-        }
-        // ยอดที่ต้องจ่าย = ยอดตะกร้า - ส่วนลดคูปอง
-        // จ่ายแล้วแต่ยอดไม่ตรง (เช่น คูปองหมดอายุ/ครบจำนวนระหว่างจ่าย, ตะกร้าเปลี่ยน) -> คืนเงินให้ แล้วให้สั่งใหม่
-        const pricing = await cartPricing(cart, userId)
-        if (paymentIntent.amount !== toSatang(pricing.total)) {
-            await stripe.refunds
-                .create({ payment_intent: paymentIntent.id }, { idempotencyKey: `mismatch-${paymentIntent.id}` })
-                .catch(console.log)
-            return res.status(409).json({
-                ok: false,
-                message: pricing.couponError
-                    ? `${pricing.couponError} ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่`
-                    : 'ยอดชำระไม่ตรงกับตะกร้า ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่',
-            })
-        }
-
-        const { id, amount, status, currency } = paymentIntent
-
-        // สร้างคำสั่งซื้อ + ตัดสต็อก + ล้างตะกร้า ในชุดเดียว
-        const order = await transaction(async (conn) => {
-            // ตรวจคูปองซ้ำแบบล็อกแถว: กันคนอื่นใช้โค้ดจนครบจำนวนระหว่างที่เรากำลังจ่าย
-            const locked = await cartPricing(cart, userId, conn, true)
-            if (locked.discount !== pricing.discount) {
-                throw new OutOfStockError(id, 'โค้ดส่วนลดใช้ไม่ได้แล้วระหว่างชำระเงิน ระบบได้คืนเงินให้แล้ว กรุณาสั่งซื้อใหม่')
-            }
-            const result = await query(
-                `INSERT INTO \`order\` (cartTotal, couponCode, discount, orderedById, stripePayment, amount, status, currency, createdAt, updatedAt)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, UTC_TIMESTAMP(3), UTC_TIMESTAMP(3))`,
-                [pricing.total, pricing.coupon?.code || null, pricing.discount, userId, id, amount, status, currency],
-                conn
-            )
-            const orderId = result.insertId
-            await query(
-                'INSERT INTO productonorder (orderId, productId, count, price) VALUES ?',
-                [items.map((i) => [orderId, i.productId, i.count, i.price])],
-                conn
-            )
-            for (const i of items) {
-                // ตัดสต็อกเฉพาะเมื่อของยังพอ (กันกรณีมีคนซื้อชิ้นสุดท้ายพร้อมกัน)
-                const updated = await query(
-                    `UPDATE product SET quantity = quantity - ?, sold = sold + ?, updatedAt = UTC_TIMESTAMP(3)
-                     WHERE id = ? AND quantity >= ?`,
-                    [i.count, i.count, i.productId, i.count],
-                    conn
-                )
-                if (updated.affectedRows === 0) {
-                    throw new OutOfStockError(id)
-                }
-            }
-            await query('DELETE FROM cart WHERE orderedById = ?', [userId], conn)
-            return one('SELECT * FROM `order` WHERE id = ?', [orderId], conn)
-        })
-
-        res.json({ ok: true, order })
+        const result = await fulfillPayment(req.body?.paymentIntent?.id, Number(req.user.id))
+        res.status(result.status).json(result.body)
     } catch (error) {
-        if (error instanceof OutOfStockError) {
-            // ตัดเงินไปแล้วแต่ของไม่พอ -> คืนเงินอัตโนมัติ
-            await stripe.refunds.create({ payment_intent: error.paymentIntentId }).catch(console.log)
-            return res.status(409).json({ ok: false, message: error.message })
-        }
-        if (error.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ ok: false, message: 'Payment already used' })
-        }
         console.log(error)
         res.status(500).json({ message: 'Server Error' })
     }

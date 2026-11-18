@@ -39,8 +39,8 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 
 | Method | Endpoint | สิทธิ์ | Body | ผลลัพธ์ |
 |---|---|---|---|---|
-| POST | `/register` | 🌐 | `{ "email", "password" }` | `"Register Success"` |
-| POST | `/login` | 🌐 | `{ "email", "password" }` | `{ payload: { id, email, role } }` + cookie |
+| POST | `/register` | 🌐 | `{ "email", "password" }` | `"Register Success"` — อีเมลต้องถูกรูปแบบ (เก็บเป็นตัวพิมพ์เล็ก), รหัสผ่าน 8–72 ตัวอักษร ไม่ผ่านได้ `400` |
+| POST | `/login` | 🌐 | `{ "email", "password" }` | `{ payload: { id, email, role } }` + cookie — อีเมล/รหัสผิดได้ `400` ข้อความเดียวกัน, บัญชีถูกระงับ `403`, ผิดบ่อยเกินได้ `429` + header `Retry-After` |
 | POST | `/logout` | 🌐 | — | ลบ cookie |
 | POST | `/current-user` | 👤 | — | `{ user }` |
 | POST | `/current-admin` | 🛡️ | — | `{ user }` |
@@ -64,7 +64,7 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | POST | `/product` | 🛡️ | `{ "title", "description", "price", "quantity", "categoryId", "lowStockThreshold", "images": [] }` — `lowStockThreshold` ไม่ส่ง = 5, `0` = ไม่แจ้งเตือน |
 | PUT | `/product/:id` | 🛡️ | เหมือน POST — `images` จะแทนที่รูปเดิมทั้งหมด |
 | DELETE | `/product/:id` | 🛡️ | ลบไม่ได้ถ้าสินค้าอยู่ในตะกร้าหรือคำสั่งซื้อแล้ว (`400`) |
-| POST | `/images` | 🛡️ | `{ "image": "<base64>" }` อัปโหลดขึ้น Cloudinary |
+| POST | `/images` | 🛡️ | `{ "image": "<base64>" }` อัปโหลดขึ้น Cloudinary — body ได้ถึง 8mb (endpoint อื่น 1mb) |
 | POST | `/removeimages` | 🛡️ | `{ "public_id" }` ลบรูปจาก Cloudinary |
 
 ### ตะกร้าและคำสั่งซื้อ (ลูกค้า)
@@ -78,7 +78,7 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | POST | `/user/cart/coupon` | 👤 | `{ "code": "WELCOME10" }` → `{ subtotal, discount, total, coupon }` — ไม่ผ่านเงื่อนไขได้ `400` พร้อมเหตุผล |
 | DELETE | `/user/cart/coupon` | 👤 | ถอดโค้ดออกจากตะกร้า |
 | POST | `/user/create-payment-intent` | 👤 | สร้างการชำระเงินจากยอดตะกร้า**หลังหักส่วนลด** → `{ clientSecret, subtotal, discount, total, coupon }` |
-| POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยใช้ |
+| POST | `/user/order` | 👤 | `{ "paymentIntent": { "id": "pi_..." } }` → `{ ok, order }` — server ตรวจกับ Stripe ว่าชำระสำเร็จ, ยอดตรง, เป็นของผู้ใช้คนนี้ และยังไม่เคยถูกคืนเงิน — ส่งซ้ำ (หรือ webhook สร้างไปแล้ว) ได้คำสั่งซื้อเดิมพร้อม `alreadyCreated: true` · ยอดไม่ตรง/ของหมด/ตะกร้าว่าง ได้ `409` และคืนเงินอัตโนมัติ |
 | GET | `/user/order` | 👤 | `{ ok, orders }` — ยังไม่มีคำสั่งซื้อได้ `orders: []` |
 | POST | `/user/order/:id/cancel` | 👤 | ยกเลิกคำสั่งซื้อของตัวเอง (เฉพาะ `Not Process`) → คืนสต็อก + คืนเงินผ่าน Stripe, `status` = `refunded` — สถานะอื่นได้ `400`, ไม่ใช่ของตัวเองได้ `404`, Stripe ไม่ผ่านได้ `502` (ไม่ยกเลิก) |
 
@@ -128,6 +128,12 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | PUT | `/admin/coupons/:id` | 🛡️ | ส่งเฉพาะช่องที่แก้ เช่น `{ "isActive": false }` |
 | DELETE | `/admin/coupons/:id` | 🛡️ | ลบ (คำสั่งซื้อเดิมยังเก็บโค้ดไว้) |
 
+### Stripe webhook
+
+| Method | Endpoint | สิทธิ์ | หมายเหตุ |
+|---|---|---|---|
+| POST | `/stripe/webhook` | Stripe เท่านั้น (ตรวจลายเซ็นด้วย `STRIPE_WEBHOOK_SECRET`) | รับ `payment_intent.succeeded` แล้วสร้างคำสั่งซื้อให้ กรณีลูกค้าปิดหน้าเว็บก่อนบันทึก — ลายเซ็นผิด `400`, ไม่ได้ตั้ง secret `503`, event อื่นตอบ `200` เฉย ๆ |
+
 ### ผู้ดูแลระบบ
 
 | Method | Endpoint | สิทธิ์ | Body |
@@ -151,5 +157,7 @@ request ที่แก้ไขข้อมูล (POST / PUT / DELETE) ต้�
 | `401` | ไม่ได้ login หรือ token หมดอายุ |
 | `403` | ไม่มีสิทธิ์ / บัญชีถูกระงับ / Origin ไม่ได้รับอนุญาต |
 | `404` | ไม่พบข้อมูล |
-| `409` | ของหมดระหว่างชำระเงิน (คืนเงินอัตโนมัติ) |
+| `409` | ชำระเงินแล้วแต่สร้างคำสั่งซื้อไม่ได้ (ของหมด, ยอดไม่ตรง, ตะกร้าว่าง) → คืนเงินอัตโนมัติ / การชำระนี้ถูกคืนเงินไปแล้ว |
+| `413` | ข้อมูลที่ส่งใหญ่เกิน (1mb, อัปโหลดรูป 8mb) |
+| `429` | เข้าสู่ระบบผิดบ่อยเกินไป รอตามเวลาใน header `Retry-After` |
 | `500` | ข้อผิดพลาดฝั่ง server |
